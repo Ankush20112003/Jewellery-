@@ -59,9 +59,3 @@ text_only_svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400
     </g>
   </g>
 </svg>
-"""
-
-with open("mahender_jewellers_text_logo.svg", "w", encoding="utf-8") as f:
-    f.write(text_only_svg)
-
-print("Text-only SVG logo generated successfully.")
