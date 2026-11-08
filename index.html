@@ -307,7 +307,7 @@ $('customerSearch').oninput=renderCustomers;$('khataCustomer').onchange=renderKh
 load();$('billDate').value=today();$('dailyDate').value=today();$('paymentDate').value=today();$('billNo').value='MJ-'+Date.now().toString().slice(-7);addItem();renderCustomerOptions();refreshAll();
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script></body></html> -->
-<!doctype html>
+<!-- <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -604,4 +604,144 @@ load();
 setInterval(load, 15000);$('billDate').value=today();$('dailyDate').value=today();$('paymentDate').value=today();$('billNo').value='MJ-'+Date.now().toString().slice(-7);addItem();renderCustomerOptions();refreshAll();
 
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script></body></html> -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#80520f"><meta name="description" content="Mahender Jewellers Pro billing, customer khata and daily cash book">
+<title>Mahender Jewellers Pro</title>
+<style>
+:root{--gold:#a97820;--ink:#2b2112;--bg:#f6f2e9;--card:#fff;--line:#e7dcc5;--muted:#776d5e;--red:#a23b32;--green:#2e7049}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,-apple-system,sans-serif}
+header{background:linear-gradient(130deg,#3f2909,#986817);color:white;text-align:center;padding:15px}
+header h1{margin:0;font-size:20px}header p{margin:3px 0 0;font-size:11px;opacity:.9}
+nav{display:flex;gap:5px;overflow:auto;padding:8px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav button{white-space:nowrap;background:#efe6d4;color:#5a421b;padding:8px 10px;font-size:12px;border:0;border-radius:6px;cursor:pointer}nav button.active{background:var(--gold);color:#fff}
+main{max-width:850px;margin:auto;padding:10px}.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0;box-shadow:0 2px 6px rgba(0,0,0,0.03)}
+h2{font-size:16px;margin:0 0 10px}button{border:0;border-radius:8px;background:var(--gold);color:white;font-weight:bold;padding:10px;font-size:13px;cursor:pointer}
+button.alt{background:#eee5d4;color:#543d16}button.red{background:var(--red)}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+input,select,textarea{width:100%;border:1px solid #d9ceb9;border-radius:6px;padding:8px;background:#fff;font:inherit}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.field{margin-bottom:8px}
+.sumrow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #d8c7a4;font-size:12px}
+.grand{text-align:center;padding:10px;font-size:22px;color:#76500e;font-weight:bold}
+.item{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:6px;border-bottom:1px solid var(--line);text-align:left}th.num,td.num{text-align:right}
+#customerBill{background:#fff;padding:15px;border:1px solid #ccc;max-width:700px;margin:auto}
+</style></head>
+<body>
+<header><h1>✦ MAHENDER JEWELLERS ✦</h1><p>Billing & Cloud Sync System</p></header>
+<nav class="no-print">
+<button class="active" data-tab="billPanel">New Bill / नया बिल</button>
+<button data-tab="historyPanel">History / पुराने बिल</button>
+</nav>
+<main>
+<section id="billPanel" class="panel active">
+<div class="card"><h2>Customer Details / ग्राहक विवरण</h2>
+<div class="grid">
+<div class="field"><label>Customer Name *</label><input id="custName" list="customerOptions" placeholder="Name"><datalist id="customerOptions"></datalist></div>
+<div class="field"><label>Mobile</label><input id="custMobile" inputmode="tel"></div>
+<div class="field"><label>Date</label><input id="billDate" type="date"></div>
+<div class="field"><label>Bill No.</label><input id="billNo"></div>
+</div></div>
+<div class="card"><h2>Jewellery Items / सामान</h2><div id="itemList"></div><button id="addItem" class="alt" style="width:100%">＋ Add Item</button></div>
+<div class="card"><h2>Totals & Payment</h2>
+<div class="grid3">
+<div class="field"><label>Discount (₹)</label><input id="discount" type="number" value="0"></div>
+<div class="field"><label>Paid Now (₹)</label><input id="paidNow" type="number" value="0"></div>
+<div class="field"><label>Payment Mode</label><select id="payMode"><option>Cash</option><option>UPI</option><option>Credit / उधार</option></select></div>
+</div><div id="liveSummary"></div>
+<button id="saveBill" style="width:100%;margin-top:10px">Save Bill & Sync to Cloud / सेव करें</button>
+</div>
+</section>
+
+<section id="historyPanel" class="panel">
+<div class="card"><h2>Synced Cloud Bills / क्लाउड बिल इतिहास</h2><input id="billSearch" placeholder="Search bill..."><div id="billHistory"></div></div>
+</section>
+</main>
+
+<script>
+const webAppUrl = "https://script.google.com/macros/s/AKfycby7NwC40vPR6imOo89mtI2RH3_3US3NFfS8FUTJIflQwN1PJ620gZgB-bN7FXSIEjY-/exec";
+const $=id=>document.getElementById(id), today=()=>new Date().toISOString().slice(0,10), num=v=>Math.max(0,Number(v)||0);
+const fmt=n=>'₹'+(Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2});
+let db={bills:[],customers:[]}, items=[];
+
+function load(){
+  try{ db = JSON.parse(localStorage.getItem('mj_db')||'{"bills":[],"customers":[]}'); }catch(e){}
+  if(webAppUrl){
+    let s=document.createElement('script');
+    s.src=webAppUrl+"?callback=handleCloud";
+    document.body.appendChild(s);
+  }
+}
+
+window.handleCloud=function(cloudBills){
+  if(Array.isArray(cloudBills)){
+    cloudBills.forEach(cb=>{
+      if(!db.bills.some(b=>b.id===cb.id)){
+        db.bills.unshift({id:cb.id, date:cb.date, customer:cb.customer, mobile:cb.mobile, total:cb.total, paid:cb.paid, due:cb.due});
+        if(cb.customer && !db.customers.some(c=>c.name===cb.customer)){
+          db.customers.push({name:cb.customer, mobile:cb.mobile});
+        }
+      }
+    });
+    persist();
+  }
+};
+
+function persist(){ localStorage.setItem('mj_db', JSON.stringify(db)); refreshUI(); }
+function tab(id){ document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id===id)); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===id)); if(id==='historyPanel') renderHistory(); }
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+
+function addItem(){ items.push({name:'', gross:'', rate:''}); renderItems(); }
+function renderItems(){
+  $('itemList').innerHTML = items.map((x,i)=>`<div class="item"><div style="display:flex;justify-content:space-between"><b>Item ${i+1}</b><button class="red" onclick="items.splice(${i},1);renderItems()">X</button></div>
+  <div class="grid3">
+  <div class="field"><label>Name</label><input data-k="name" value="${x.name}" placeholder="Ring/Necklace"></div>
+  <div class="field"><label>Weight (gm)</label><input data-k="gross" type="number" step=".001" value="${x.gross}"></div>
+  <div class="field"><label>Rate / 10gm</label><input data-k="rate" type="number" value="${x.rate}"></div>
+  </div></div>`).join('');
+  $('itemList').querySelectorAll('.item').forEach((el,i)=>el.querySelectorAll('[data-k]').forEach(inp=>inp.oninput=e=>items[i][inp.dataset.k]=e.target.value));
+  calcSum();
+}
+
+function calcSum(){
+  let sub = items.reduce((s,x)=>s+(num(x.gross)*num(x.rate)/10),0);
+  let disc = num($('discount').value), paid = num($('paidNow').value);
+  let total = Math.max(0, sub - disc), due = Math.max(0, total - paid);
+  $('liveSummary').innerHTML = `<div class="sumrow"><span>Subtotal</span><b>${fmt(sub)}</b></div><div class="sumrow"><span>Discount</span><b>${fmt(disc)}</b></div><div class="sumrow"><span>Paid</span><b>${fmt(paid)}</b></div><div class="grand">${fmt(total)}</div><div class="sumrow"><span>Due Balance</span><b>${fmt(due)}</b></div>`;
+  return {sub, total, paid, due};
+}
+['discount','paidNow'].forEach(id=>$(id).oninput=calcSum);
+
+function saveBill(){
+  let name = $('custName').value.trim();
+  if(!name){ alert('Enter customer name'); return; }
+  if(!items.length){ alert('Add items'); return; }
+  let s = calcSum();
+  let bill = {id:$('billNo').value, date:$('billDate').value, customer:name, mobile:$('custMobile').value, total:s.total, paid:s.paid, due:s.due};
+  
+  db.bills.unshift(bill);
+  if(!db.customers.some(c=>c.name===name)) db.customers.push({name, mobile:bill.mobile});
+  persist();
+
+  if(webAppUrl){
+    fetch(webAppUrl, {method:"POST", mode:"no-cors", headers:{"Content-Type":"application/json"}, body:JSON.stringify(bill)}).catch(e=>console.log(e));
+  }
+  alert('Bill saved and synced to Google Sheet!');
+  location.reload();
+}
+
+function renderHistory(){
+  let q = $('billSearch').value.toLowerCase();
+  $('billHistory').innerHTML = db.bills.filter(b=>(b.id+b.customer+b.mobile).toLowerCase().includes(q)).map(b=>`<div style="padding:8px 0;border-bottom:1px solid #eee"><b>${b.customer}</b> (${b.mobile||'—'})<span style="float:right"><b>${fmt(b.total)}</b></span><br><small>${b.id} · ${b.date} · Due: ${fmt(b.due)}</small></div>`).join('')||'<p style="text-align:center;color:#77">No bills found</p>';
+}
+$('billSearch').oninput = renderHistory;
+
+load();
+$('billDate').value = today();
+$('billNo').value = 'MJ-' + Date.now().toString().slice(-6);
+addItem();
 </script></body></html>
