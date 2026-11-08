@@ -1,4 +1,4 @@
-<!doctype html>
+<!--<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -119,6 +119,174 @@ function saveBill(){let name=$('custName').value.trim();if(!name){alert('Custome
 let b=calcBill(),cid=customerId(name,$('custMobile').value.trim()),bill={id:$('billNo').value||'MJ-'+Date.now(),date:$('billDate').value||today(),customerId:cid,customer:name,mobile:$('custMobile').value,payMode:$('payMode').value,items:b.items,subtotal:b.subtotal,discount:b.discount,gst:b.gst,exchange:b.exchange,total:b.total,paid:b.paid,due:b.due,weight:b.weight,notes:$('notes').value};
 db.bills.unshift(bill);if(bill.due>0)db.payments.push({id:'P'+Date.now(),date:bill.date,customerId:cid,customer:name,type:'debit',amount:bill.due,note:'Bill '+bill.id,payMode:bill.payMode,billId:bill.id});if(bill.paid>0)db.cash.push({id:'R'+Date.now(),date:bill.date,type:'in',amount:bill.paid,mode:bill.payMode,category:'Customer Receipt',description:'Payment for bill '+bill.id,customer:name});
 persist();renderCustomerOptions();showCustomerBill(bill);alert('Bill saved. Customer khata and daily book updated. / बिल सेव हो गया।')}
+function logoSvg(){return `<svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="96" height="96" rx="18" fill="#f6edda" stroke="#a97820" stroke-width="3"/><path d="M50 12 83 42 50 86 17 42Z" fill="#d6a83d" stroke="#8a5b12" stroke-width="2"/><path d="M17 42h66L50 86Z" fill="#f9e7b6"/><path d="M50 12 68 42H32Z" fill="#fff7df"/><text x="50" y="98" text-anchor="middle" font-size="8" fill="#6d4a13">MJ</text></svg>`}
+function showCustomerBill(b){tab('billPanel');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));$('billPanel').classList.add('active');$('billPanel').innerHTML=`<div class="card no-print actions"><button onclick="window.print()">Print / Save PDF</button><button class="alt" onclick="downloadJpg()">Download JPG</button><button class="alt" onclick="shareCustomerBill()">Share</button><button class="alt" onclick="location.reload()">Back to App</button></div><div id="customerBill"><div class="billtop"><div class="brand"><h2>MAHENDER JEWELLERS</h2><b>महेंद्र ज्वैलर्स</b><p>Titram · Kailram Wale</p><p>Customer Bill / ग्राहक बिल</p></div>${logoSvg()}</div><div class="billmeta"><div><b>Customer:</b> ${esc(b.customer)}<br><b>Mobile:</b> ${esc(b.mobile||'—')}</div><div><b>Bill No:</b> ${esc(b.id)}<br><b>Date:</b> ${esc(b.date)}</div></div><table><thead><tr><th>Item / सामान</th><th>Metal</th><th>Net Wt.</th><th>Rate / 10g</th><th>Labour + Other</th><th class="num">Amount</th></tr></thead><tbody>${b.items.map(x=>`<tr><td>${esc(x.name)}<br><small>${esc(x.purity||'')}</small></td><td>${esc(x.metal)}</td><td>${num(x.net).toFixed(3)} gm</td><td>${fmt(x.rate)}</td><td>${fmt(x.labour+num(x.other)+x.wasteValue)}</td><td class="num">${fmt(x.total)}</td></tr>`).join('')}</tbody></table><p style="font-size:12px"><b>Total Net Weight:</b> ${b.weight.toFixed(3)} gm</p><div style="margin-left:auto;max-width:320px;font-size:12px"><div class="sumrow"><span>Subtotal</span><b>${fmt(b.subtotal)}</b></div><div class="sumrow"><span>Discount</span><b>${fmt(b.discount)}</b></div><div class="sumrow"><span>GST</span><b>${fmt(b.gst)}</b></div><div class="sumrow"><span>Old Metal Exchange</span><b>${fmt(b.exchange)}</b></div><div class="sumrow"><span>Paid</span><b>${fmt(b.paid)}</b></div><div class="sumrow"><b>Balance Due</b><b>${fmt(b.due)}</b></div><div class="grand"><small>GRAND TOTAL / कुल बिल</small><strong>${fmt(b.total)}</strong></div></div><div class="billfoot"><span>Customer Signature / ग्राहक हस्ताक्षर<br><br>_________________</span><span>For Mahender Jewellers<br><br>_________________</span></div><p style="text-align:center;font-size:11px;margin-top:20px">Thank You · धन्यवाद</p></div>`;window.currentBill=b}
+function downloadJpg(){let el=$('customerBill');if(!el)return;let clone=el.cloneNode(true);clone.style.width='900px';clone.style.maxWidth='none';clone.style.position='fixed';clone.style.left='-2000px';document.body.appendChild(clone);let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="${Math.max(1200,clone.scrollHeight+100)}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,sans-serif;background:white;padding:35px;color:#211b10">${clone.innerHTML}</div></foreignObject></svg>`;let blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),img=new Image();img.onload=()=>{let c=document.createElement('canvas');c.width=1000;c.height=Math.max(1200,clone.scrollHeight+100);let ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(window.currentBill?.id||'Mahender-Bill')+'.jpg';a.click();URL.revokeObjectURL(a.href);URL.revokeObjectURL(url);clone.remove()},'image/jpeg',.94)};img.onerror=()=>{alert('JPG export is not supported by this browser. Use Print > Save as PDF.');URL.revokeObjectURL(url);clone.remove()};img.src=url}
+async function shareCustomerBill(){let b=window.currentBill;if(!b)return;let text=`MAHENDER JEWELLERS\nCustomer: ${b.customer}\nBill: ${b.id} | ${b.date}\n${b.items.map(x=>`${x.name} (${x.metal}) ${x.net.toFixed(3)}gm = ${fmt(x.total)}`).join('\n')}\nTotal: ${fmt(b.total)}\nPaid: ${fmt(b.paid)}\nDue: ${fmt(b.due)}`;if(navigator.share){try{await navigator.share({title:'Mahender Jewellers Bill',text})}catch(e){}}else{await navigator.clipboard.writeText(text);alert('Bill text copied')}}
+function renderCustomerOptions(){let opts=db.customers.map(c=>`<option value="${esc(c.name)}">`).join('');$('customerOptions').innerHTML=opts;let s='<option value="">Select customer</option>'+db.customers.map(c=>`<option value="${c.id}">${esc(c.name)} ${esc(c.mobile)}</option>`).join('');$('khataCustomer').innerHTML=s;$('paymentCustomer').innerHTML=s}
+function renderCustomers(){let q=$('customerSearch').value.toLowerCase();$('customerDirectory').innerHTML=db.customers.filter(c=>(c.name+c.mobile+c.address).toLowerCase().includes(q)).map(c=>`<div class="listrow"><b>${esc(c.name)}</b><div class="muted">${esc(c.mobile)} · ${esc(c.address)}</div><div class="muted">Bills: ${db.bills.filter(b=>b.customerId===c.id).length} · Outstanding: ${fmt(balance(c.id))}</div><button class="alt" onclick="$('khataCustomer').value='${c.id}';tab('khataPanel');renderKhata()">Open Khata</button></div>`).join('')||'<div class="empty">No customers yet</div>'}
+function balance(cid){let debit=db.payments.filter(p=>p.customerId===cid&&p.type==='debit').reduce((s,p)=>s+p.amount,0),credit=db.payments.filter(p=>p.customerId===cid&&p.type==='credit').reduce((s,p)=>s+p.amount,0);return debit-credit}
+function renderKhata(){let cid=$('khataCustomer').value;if(!cid){$('khataDetails').innerHTML='<div class="empty">Select a customer to view their khata / खाता देखने के लिए ग्राहक चुनें</div>';return}let c=db.customers.find(x=>x.id===cid),entries=db.payments.filter(p=>p.customerId===cid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));$('khataDetails').innerHTML=`<h3>${esc(c?.name||'')} · Outstanding / बाकी: <b>${fmt(balance(cid))}</b></h3><table><tr><th>Date</th><th>Details</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>${entries.map((p,i)=>`<tr><td>${esc(p.date)}</td><td>${esc(p.note||p.billId||p.payMode||'Entry')}</td><td>${p.type==='debit'?fmt(p.amount):'—'}</td><td>${p.type==='credit'?fmt(p.amount):'—'}</td><td>${fmt(entries.slice(0,i+1).reduce((s,e)=>s+(e.type==='debit'?e.amount:-e.amount),0))}</td></tr>`).join('')}</table>`}
+function recordPayment(){let cid=$('paymentCustomer').value,amount=num($('paymentAmount').value);if(!cid||!amount){alert('Select customer and enter amount');return}let c=db.customers.find(x=>x.id===cid),date=$('paymentDate').value||today(),mode=$('paymentMode').value;db.payments.push({id:'P'+Date.now(),date,customerId:cid,customer:c.name,type:'credit',amount,note:$('paymentNote').value||'Payment received',payMode:mode});db.cash.push({id:'R'+Date.now(),date,type:'in',amount,mode,category:'Customer Receipt',description:'Khata payment',customer:c.name});persist();$('khataCustomer').value=cid;renderKhata();alert('Payment recorded / जमा दर्ज हो गया')}
+function renderDaily(){let date=$('dailyDate').value||today(),bills=db.bills.filter(b=>b.date===date),cash=db.cash.filter(c=>c.date===date),sales=bills.reduce((s,b)=>s+b.total,0),received=cash.filter(c=>c.type==='in').reduce((s,c)=>s+c.amount,0),out=cash.filter(c=>c.type==='out').reduce((s,c)=>s+c.amount,0),due=bills.reduce((s,b)=>s+b.due,0);$('dailySummary').innerHTML=`<div class="grid"><div class="summary"><small>Bill Sales / बिल बिक्री</small><h3>${fmt(sales)}</h3></div><div class="summary"><small>Money Received / प्राप्त</small><h3>${fmt(received)}</h3></div><div class="summary"><small>Cash Out / खर्च</small><h3>${fmt(out)}</h3></div><div class="summary"><small>New Due / नया उधार</small><h3>${fmt(due)}</h3></div></div><h3>Bills / बिल (${bills.length})</h3>${bills.map(b=>`<div class="listrow">${esc(b.id)} · ${esc(b.customer)} <b style="float:right">${fmt(b.total)}</b></div>`).join('')||'<p class="muted">No bills on this date</p>'}<h3>Cash Entries / नकद एंट्री</h3>${cash.map(c=>`<div class="listrow">${esc(c.mode)} · ${esc(c.category)} · ${esc(c.description)} <b style="float:right;color:${c.type==='in'?'#2e7049':'#a23b32'}">${c.type==='in'?'+':'−'}${fmt(c.amount)}</b></div>`).join('')||'<p class="muted">No cash entries</p>'}`}
+function saveCash(){let amount=num($('cashAmount').value);if(!amount){alert('Enter amount');return}db.cash.push({id:'C'+Date.now(),date:$('dailyDate').value||today(),type:$('cashType').value,amount,mode:$('cashMode').value,category:$('cashCategory').value,description:$('cashDesc').value});persist();renderDaily();$('cashAmount').value='';$('cashDesc').value='';alert('Daily entry saved')}
+function renderHistory(){let q=$('billSearch').value.toLowerCase();$('billHistory').innerHTML=db.bills.filter(b=>(b.id+b.customer+b.date).toLowerCase().includes(q)).map((b,i)=>`<div class="listrow"><b>${esc(b.customer)}</b> · ${esc(b.date)}<span style="float:right"><b>${fmt(b.total)}</b></span><div class="muted">${esc(b.id)} · ${b.items.length} items · Due ${fmt(b.due)}</div><button class="alt" onclick="showCustomerBill(db.bills.find(x=>x.id==='${b.id}'))">Open Customer Copy</button></div>`).join('')||'<div class="empty">No bills found</div>'}
+function refreshAll(){renderCustomerOptions();renderCustomers();renderKhata();renderDaily();renderHistory()}
+function reset(){ $('custName').value='';$('custMobile').value='';$('billDate').value=today();$('billNo').value='MJ-'+Date.now().toString().slice(-7);$('paidNow').value='0';$('discount').value='0';$('gst').value='0';$('exchange').value='0';$('notes').value='';items=[];addItem()}
+$('addItem').onclick=()=>addItem();$('saveBill').onclick=saveBill;$('previewBill').onclick=()=>{let b=calcBill();let name=$('custName').value.trim();if(!name){alert('Enter customer name');return}showCustomerBill({id:$('billNo').value,date:$('billDate').value,customer:name,mobile:$('custMobile').value,items:b.items,subtotal:b.subtotal,discount:b.discount,gst:b.gst,exchange:b.exchange,total:b.total,paid:b.paid,due:b.due,weight:b.weight})};$('resetBill').onclick=reset;
+$('addCustomer').onclick=()=>{let name=$('newCustName').value.trim();if(!name){alert('Enter customer name');return}let c=customerId(name,$('newCustMobile').value.trim());let obj=db.customers.find(x=>x.id===c);obj.address=$('newCustAddress').value;persist();$('newCustName').value='';$('newCustMobile').value='';$('newCustAddress').value='';alert('Customer saved')};
+$('customerSearch').oninput=renderCustomers;$('khataCustomer').onchange=renderKhata;$('recordPayment').onclick=recordPayment;$('dailyDate').onchange=renderDaily;$('saveCash').onclick=saveCash;$('billSearch').oninput=renderHistory;
+load();$('billDate').value=today();$('dailyDate').value=today();$('paymentDate').value=today();$('billNo').value='MJ-'+Date.now().toString().slice(-7);addItem();renderCustomerOptions();refreshAll();
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script></body></html>-->
+
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#80520f"><meta name="description" content="Mahender Jewellers offline billing, customer khata and daily cash book">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="logo.svg" type="image/svg+xml">
+<title>Mahender Jewellers Pro</title>
+<style>
+:root{--gold:#a97820;--gold2:#e4c477;--ink:#2b2112;--bg:#f6f2e9;--card:#fff;--line:#e7dcc5;--muted:#776d5e;--red:#a23b32;--green:#2e7049}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:linear-gradient(130deg,#3f2909,#986817);color:white;text-align:center;padding:17px 12px}
+header h1{margin:0;font-size:22px;letter-spacing:.6px}header p{margin:4px 0 0;font-size:12px;opacity:.9}
+nav{display:flex;gap:6px;overflow:auto;padding:9px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav button{white-space:nowrap;background:#efe6d4;color:#5a421b;padding:9px 12px;font-size:12px}nav button.active{background:var(--gold);color:#fff}
+main{max-width:900px;margin:auto;padding:12px 11px 40px}.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px;margin:10px 0;box-shadow:0 2px 8px #50340009}
+h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:10px 0}
+button{border:0;border-radius:9px;background:var(--gold);color:white;font-weight:650;padding:10px 13px;font-size:13px;cursor:pointer}
+button.alt{background:#eee5d4;color:#543d16}button.red{background:var(--red)}button.green{background:var(--green)}
+button:disabled{opacity:.45}
+label{display:block;font-size:11px;color:var(--muted);margin:0 0 4px}
+input,select,textarea{width:100%;min-width:0;border:1px solid #d9ceb9;border-radius:8px;padding:10px;background:#fff;color:var(--ink);font:inherit}
+textarea{min-height:65px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.field{min-width:0;margin-bottom:9px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}.wrap{display:flex;flex-wrap:wrap;gap:7px}.muted{font-size:11px;color:var(--muted)}.pill{display:inline-block;background:#f3ead7;color:#6d4b12;border-radius:99px;padding:4px 8px;font-size:10px}
+.item{border:1px solid var(--line);border-radius:10px;padding:11px;margin:10px 0}.itemhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.itemhead b{color:#80520f}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px 5px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}td.num,th.num{text-align:right}
+.summary{background:#f4ead5;border-radius:11px;padding:12px;margin-top:10px}.sumrow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #d8c7a4}.grand{text-align:center;padding:12px 5px}.grand strong{font-size:25px;color:#76500e}
+.listrow{padding:10px 0;border-bottom:1px solid var(--line)}.empty{color:var(--muted);text-align:center;padding:18px}
+#customerBill{background:#fff;color:#211b10;padding:18px;border:1px solid #ddd;max-width:760px;margin:10px auto}
+.billtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #ad812e;padding-bottom:12px}
+.brand h2{font-size:23px;color:#956719;margin:0}.brand p{margin:3px 0;font-size:11px}.logo{width:70px;height:70px;flex:none}
+.billmeta{display:flex;justify-content:space-between;gap:12px;margin:12px 0;font-size:12px}
+.billfoot{display:flex;justify-content:space-between;margin-top:32px;font-size:12px}
+.actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{flex:1}
+.hide{display:none!important}
+@media(max-width:520px){.grid3{grid-template-columns:1fr 1fr}.billmeta{display:block}.logo{width:58px;height:58px}#customerBill{padding:10px}.brand h2{font-size:19px}}
+@media print{body{background:#fff}header,nav,main>.panel:not(#billPanel),.no-print{display:none!important}#billPanel{display:block!important}#customerBill{border:0;margin:0;max-width:none;padding:8mm;box-shadow:none}main{padding:0} @page{size:A4;margin:10mm}}
+</style></head>
+<body>
+<header><h1>✦ MAHENDER JEWELLERS ✦</h1><p>महेंद्र ज्वैलर्स · Titram · Kailram Wale</p><p>Billing · Customer Khata · Daily Cash Book</p></header>
+<nav class="no-print">
+<button class="active" data-tab="billPanel">New Bill / नया बिल</button>
+<button data-tab="customersPanel">Customers / ग्राहक बुक</button>
+<button data-tab="khataPanel">Khata / उधार खाता</button>
+<button data-tab="dailyPanel">Daily Book / रोज़ का हिसाब</button>
+<button data-tab="historyPanel">Bill History / पुराने बिल</button>
+</nav>
+<main>
+<section id="billPanel" class="panel active">
+<div class="card no-print"><h2>Customer & Bill Details / ग्राहक व बिल जानकारी</h2><div class="grid">
+<div class="field"><label>Customer Name / ग्राहक का नाम *</label><input id="custName" list="customerOptions" placeholder="Name"><datalist id="customerOptions"></datalist></div>
+<div class="field"><label>Mobile / मोबाइल</label><input id="custMobile" inputmode="tel"></div>
+<div class="field"><label>Date / तारीख</label><input id="billDate" type="date"></div>
+<div class="field"><label>Bill No. / बिल नंबर</label><input id="billNo"></div>
+</div><div class="grid"><div class="field"><label>Payment Mode / भुगतान</label><select id="payMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option><option>Credit / उधार</option><option>Mixed</option></select></div><div class="field"><label>Paid Now / अभी प्राप्त राशि (₹)</label><input id="paidNow" type="number" min="0" value="0"></div></div></div>
+<div class="card no-print"><div class="row"><h2>Jewellery Items / गहनों का विवरण</h2><span class="pill">Gold + Silver</span></div><div id="itemList"></div><button id="addItem" class="alt" style="width:100%">＋ Add Jewellery Item / नया सामान जोड़ें</button></div>
+<div class="card no-print"><h2>Adjustments / बिल में बदलाव</h2><div class="grid3">
+<div class="field"><label>Discount (₹) / छूट</label><input id="discount" type="number" min="0" value="0"></div>
+<div class="field"><label>GST % (if applicable) / जीएसटी</label><input id="gst" type="number" min="0" step=".01" value="0"></div>
+<div class="field"><label>Old Gold/Silver Exchange (₹) / पुराना सोना-चांदी</label><input id="exchange" type="number" min="0" value="0"></div>
+</div><div class="field"><label>Notes / टिप्पणी (internal)</label><textarea id="notes" placeholder="Optional"></textarea></div></div>
+<div class="card no-print"><h2>Live Summary / बिल का हिसाब</h2><div id="liveSummary"></div><p class="muted">Tunch is used for calculation and stored in the shop record. It is intentionally hidden from the customer bill / ग्राहक की कॉपी में टंच नहीं दिखेगा।</p><div class="actions"><button id="saveBill">Save Bill + Khata / बिल सेव करें</button><button class="alt" id="previewBill">Customer Copy / ग्राहक कॉपी</button><button class="alt" id="resetBill">New / साफ करें</button></div></div>
+</section>
+
+<section id="customersPanel" class="panel">
+<div class="card"><h2>Customer Book / ग्राहक बुक</h2><div class="grid"><div class="field"><label>Name / नाम</label><input id="newCustName"></div><div class="field"><label>Mobile / मोबाइल</label><input id="newCustMobile" inputmode="tel"></div></div><div class="field"><label>Address / पता</label><input id="newCustAddress"></div><button id="addCustomer">Save Customer / ग्राहक सेव करें</button></div>
+<div class="card"><h2>Customer Directory / ग्राहक सूची</h2><input id="customerSearch" placeholder="Search name or mobile / खोजें"><div id="customerDirectory"></div></div>
+</section>
+
+<section id="khataPanel" class="panel">
+<div class="card"><h2>Customer Khata / ग्राहक उधार खाता</h2><div class="field"><label>Select Customer / ग्राहक चुनें</label><select id="khataCustomer"><option value="">Select customer</option></select></div><div id="khataDetails"></div></div>
+<div class="card"><h2>Record Payment / जमा राशि दर्ज करें</h2><div class="grid"><div class="field"><label>Customer / ग्राहक</label><select id="paymentCustomer"><option value="">Select customer</option></select></div><div class="field"><label>Date / तारीख</label><input id="paymentDate" type="date"></div><div class="field"><label>Amount (₹) / राशि</label><input id="paymentAmount" type="number" min="0"></div><div class="field"><label>Mode / तरीका</label><select id="paymentMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option></select></div></div><div class="field"><label>Note / विवरण</label><input id="paymentNote" placeholder="Payment received"></div><button id="recordPayment">Record Payment / जमा करें</button></div>
+</section>
+
+<section id="dailyPanel" class="panel">
+<div class="card"><h2>Daily Book / रोज़ का हिसाब</h2><div class="field"><label>Select Date / तारीख चुनें</label><input id="dailyDate" type="date"></div><div id="dailySummary"></div></div>
+<div class="card"><h2>Cash In / Cash Out Entry</h2><div class="grid"><div class="field"><label>Entry Type / प्रकार</label><select id="cashType"><option value="in">Cash In / जमा</option><option value="out">Cash Out / खर्च</option></select></div><div class="field"><label>Amount (₹) / राशि</label><input id="cashAmount" type="number" min="0"></div><div class="field"><label>Mode / भुगतान माध्यम</label><select id="cashMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank</option></select></div><div class="field"><label>Category / मद</label><select id="cashCategory"><option>Shop Expense</option><option>Supplier Payment</option><option>Customer Receipt</option><option>Other Income</option><option>Other Expense</option></select></div></div><div class="field"><label>Description / विवरण</label><input id="cashDesc"></div><button id="saveCash">Save Daily Entry / एंट्री सेव करें</button></div></section>
+
+<section id="historyPanel" class="panel"><div class="card"><h2>Bill History / पुराने बिल</h2><input id="billSearch" placeholder="Search bill/customer/date"><div id="billHistory"></div></div></section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id), today=()=>new Date().toISOString().slice(0,10), num=v=>Math.max(0,Number(v)||0);
+const fmt=n=>'₹'+(Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let db={customers:[],bills:[],payments:[],cash:[]},items=[];
+function load(){try{db=JSON.parse(localStorage.getItem('mj_pro_db')||'null')||db}catch(e){}}
+function persist(){localStorage.setItem('mj_pro_db',JSON.stringify(db));refreshAll()}
+function tab(id){document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));if(id==='customersPanel')renderCustomers();if(id==='khataPanel')renderKhata();if(id==='dailyPanel')renderDaily();if(id==='historyPanel')renderHistory()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+function blankItem(){return {metal:'Gold',name:'',gross:'',stone:'0',rate:'',tunch:'100',labourMode:'fixed',labour:'',wastage:'0',other:'0',purity:'22K',hallmark:''}}
+function addItem(x=blankItem()){items.push({...x});renderItems()}
+function renderItems(){$('itemList').innerHTML=items.map((x,i)=>`<div class="item"><div class="itemhead"><b>Item ${i+1} / सामान ${i+1}</b><button class="red" onclick="removeItem(${i})">Remove</button></div>
+<div class="grid3">
+<div class="field"><label>Metal / धातु</label><select data-k="metal"><option ${x.metal==='Gold'?'selected':''}>Gold</option><option ${x.metal==='Silver'?'selected':''}>Silver</option></select></div>
+<div class="field"><label>Item Name / नाम</label><input data-k="name" value="${esc(x.name)}" placeholder="Payjeb, Ring..."></div>
+<div class="field"><label>Purity / कैरेट</label><select data-k="purity">${['24K','22K','20K','18K','14K','925 Silver','999 Silver','Other'].map(p=>`<option ${x.purity===p?'selected':''}>${p}</option>`).join('')}</select></div>
+<div class="field"><label>Gross Weight (gm) / कुल वजन</label><input data-k="gross" type="number" step=".001" min="0" value="${esc(x.gross)}"></div>
+<div class="field"><label>Stone/Other Weight (gm) / नग वजन</label><input data-k="stone" type="number" step=".001" min="0" value="${esc(x.stone)}"></div>
+<div class="field"><label>Net Metal Weight / शुद्ध वजन</label><input readonly value="${Math.max(0,num(x.gross)-num(x.stone)).toFixed(3)} gm"></div>
+<div class="field"><label>Rate per 10 gm (₹) / 10 ग्राम रेट</label><input data-k="rate" type="number" min="0" step=".01" value="${esc(x.rate)}"></div>
+<div class="field"><label>Tunch (%) / टंच (केवल दुकान)</label><input data-k="tunch" type="number" min="0" step=".01" value="${esc(x.tunch)}"></div>
+<div class="field"><label>Labour / मजदूरी</label><input data-k="labour" type="number" min="0" step=".01" value="${esc(x.labour)}"></div>
+<div class="field"><label>Labour Type / मजदूरी प्रकार</label><select data-k="labourMode"><option value="fixed" ${x.labourMode==='fixed'?'selected':''}>Fixed / कुल</option><option value="pergram" ${x.labourMode==='pergram'?'selected':''}>Per gram / प्रति ग्राम</option><option value="percent" ${x.labourMode==='percent'?'selected':''}>% of metal value / प्रतिशत</option></select></div>
+<div class="field"><label>Wastage (%) / वेस्टेज</label><input data-k="wastage" type="number" min="0" step=".01" value="${esc(x.wastage)}"></div>
+<div class="field"><label>Other Charges (₹) / अन्य खर्च</label><input data-k="other" type="number" min="0" step=".01" value="${esc(x.other)}"></div>
+<div class="field"><label>Hallmark / HUID (optional)</label><input data-k="hallmark" value="${esc(x.hallmark)}" placeholder="HUID / hallmark"></div>
+</div><div class="muted" id="itcalc${i}"></div></div>`).join('');
+$('itemList').querySelectorAll('.item').forEach((el,i)=>el.querySelectorAll('[data-k]').forEach(inp=>inp.addEventListener('input',()=>{items[i][inp.dataset.k]=inp.value;renderItemCalc()})));
+renderItemCalc()}
+function removeItem(i){items.splice(i,1);renderItems()}
+function calcItems(){return items.map(x=>{let net=Math.max(0,num(x.gross)-num(x.stone));let raw=net*num(x.rate)/10;let metalValue=raw*num(x.tunch)/100;let wasteValue=raw*num(x.wastage)/100;let labour=x.labourMode==='pergram'?net*num(x.labour):x.labourMode==='percent'?metalValue*num(x.labour)/100:num(x.labour);let total=metalValue+wasteValue+labour+num(x.other);return {...x,net,metalValue,wasteValue,labour,total}})}
+function renderItemCalc(){let c=calcItems();c.forEach((x,i)=>{let el=$('itcalc'+i);if(el)el.textContent=`Net: ${x.net.toFixed(3)} gm · Tunch-adjusted metal: ${fmt(x.metalValue)} · Wastage: ${fmt(x.wasteValue)} · Labour: ${fmt(x.labour)} · Item total: ${fmt(x.total)}`});renderSummary()}
+function calcBill(){let c=calcItems(),subtotal=c.reduce((s,x)=>s+x.total,0),discount=num($('discount').value),exchange=num($('exchange').value),gst=(subtotal-discount)*num($('gst').value)/100,taxable=Math.max(0,subtotal-discount+gst-exchange),paid=num($('paidNow').value),due=Math.max(0,taxable-paid);return {items:c,subtotal,discount,exchange,gst,total:taxable,paid,due,weight:c.reduce((s,x)=>s+x.net,0),gross:c.reduce((s,x)=>s+num(x.gross),0)}}
+function renderSummary(){if(!$('liveSummary'))return;let b=calcBill();$('liveSummary').innerHTML=`<div class="sumrow"><span>Items / सामान</span><b>${items.length}</b></div><div class="sumrow"><span>Net Metal Weight / शुद्ध वजन</span><b>${b.weight.toFixed(3)} gm</b></div><div class="sumrow"><span>Subtotal / कुल</span><b>${fmt(b.subtotal)}</b></div><div class="sumrow"><span>Discount / छूट</span><b>${fmt(b.discount)}</b></div><div class="sumrow"><span>GST</span><b>${fmt(b.gst)}</b></div><div class="sumrow"><span>Old Metal Exchange / पुराना सोना-चांदी</span><b>${fmt(b.exchange)}</b></div><div class="sumrow"><span>Paid / जमा</span><b>${fmt(b.paid)}</b></div><div class="summary"><div class="grand"><small>NET BILL / कुल बिल</small><strong>${fmt(b.total)}</strong></div><div class="sumrow"><b>Balance Due / बाकी</b><b>${fmt(b.due)}</b></div></div>`}
+['discount','gst','exchange','paidNow'].forEach(id=>$(id).oninput=renderSummary);
+function customerId(name,mobile){let c=db.customers.find(x=>x.name.toLowerCase()===name.trim().toLowerCase()&&(mobile?x.mobile===mobile:true));if(!c){c={id:'C'+Date.now(),name:name.trim(),mobile:mobile||'',address:''};db.customers.push(c)}return c.id}
+function saveBill(){
+  let name=$('custName').value.trim();
+  if(!name){alert('Customer name is required / ग्राहक का नाम भरें');return}
+  if(!items.length||!items.some(x=>x.name.trim()&&num(x.gross)>0&&num(x.rate)>0)){alert('Add an item with weight and rate');return}
+  
+  let b=calcBill(),cid=customerId(name,$('custMobile').value.trim()),bill={id:$('billNo').value||'MJ-'+Date.now(),date:$('billDate').value||today(),customerId:cid,customer:name,mobile:$('custMobile').value,payMode:$('payMode').value,items:b.items,subtotal:b.subtotal,discount:b.discount,gst:b.gst,exchange:b.exchange,total:b.total,paid:b.paid,due:b.due,weight:b.weight,notes:$('notes').value};
+  
+  db.bills.unshift(bill);
+  if(bill.due>0)db.payments.push({id:'P'+Date.now(),date:bill.date,customerId:cid,customer:name,type:'debit',amount:bill.due,note:'Bill '+bill.id,payMode:bill.payMode,billId:bill.id});
+  if(bill.paid>0)db.cash.push({id:'R'+Date.now(),date:bill.date,type:'in',amount:bill.paid,mode:bill.payMode,category:'Customer Receipt',description:'Payment for bill '+bill.id,customer:name});
+  
+  persist();
+  renderCustomerOptions();
+
+  // --- Google Sheet Sync Code ---
+  let webAppUrl = "https://script.google.com/macros/s/AKfycbynJmGUx9cVgPJG9zUpJe02pnVdQWYPyHoL9XmrCC8Ki504GG20GT3o237GJOVCYkc0/exec"; 
+  if(webAppUrl !== "") {
+    fetch(webAppUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bill)
+    }).catch(err => console.log("Sheet error:", err));
+  }
+  // ------------------------------
+
+  showCustomerBill(bill);
+  alert('Bill saved and synced! / बिल सेव हो गया।');
+}
 function logoSvg(){return `<svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="96" height="96" rx="18" fill="#f6edda" stroke="#a97820" stroke-width="3"/><path d="M50 12 83 42 50 86 17 42Z" fill="#d6a83d" stroke="#8a5b12" stroke-width="2"/><path d="M17 42h66L50 86Z" fill="#f9e7b6"/><path d="M50 12 68 42H32Z" fill="#fff7df"/><text x="50" y="98" text-anchor="middle" font-size="8" fill="#6d4a13">MJ</text></svg>`}
 function showCustomerBill(b){tab('billPanel');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));$('billPanel').classList.add('active');$('billPanel').innerHTML=`<div class="card no-print actions"><button onclick="window.print()">Print / Save PDF</button><button class="alt" onclick="downloadJpg()">Download JPG</button><button class="alt" onclick="shareCustomerBill()">Share</button><button class="alt" onclick="location.reload()">Back to App</button></div><div id="customerBill"><div class="billtop"><div class="brand"><h2>MAHENDER JEWELLERS</h2><b>महेंद्र ज्वैलर्स</b><p>Titram · Kailram Wale</p><p>Customer Bill / ग्राहक बिल</p></div>${logoSvg()}</div><div class="billmeta"><div><b>Customer:</b> ${esc(b.customer)}<br><b>Mobile:</b> ${esc(b.mobile||'—')}</div><div><b>Bill No:</b> ${esc(b.id)}<br><b>Date:</b> ${esc(b.date)}</div></div><table><thead><tr><th>Item / सामान</th><th>Metal</th><th>Net Wt.</th><th>Rate / 10g</th><th>Labour + Other</th><th class="num">Amount</th></tr></thead><tbody>${b.items.map(x=>`<tr><td>${esc(x.name)}<br><small>${esc(x.purity||'')}</small></td><td>${esc(x.metal)}</td><td>${num(x.net).toFixed(3)} gm</td><td>${fmt(x.rate)}</td><td>${fmt(x.labour+num(x.other)+x.wasteValue)}</td><td class="num">${fmt(x.total)}</td></tr>`).join('')}</tbody></table><p style="font-size:12px"><b>Total Net Weight:</b> ${b.weight.toFixed(3)} gm</p><div style="margin-left:auto;max-width:320px;font-size:12px"><div class="sumrow"><span>Subtotal</span><b>${fmt(b.subtotal)}</b></div><div class="sumrow"><span>Discount</span><b>${fmt(b.discount)}</b></div><div class="sumrow"><span>GST</span><b>${fmt(b.gst)}</b></div><div class="sumrow"><span>Old Metal Exchange</span><b>${fmt(b.exchange)}</b></div><div class="sumrow"><span>Paid</span><b>${fmt(b.paid)}</b></div><div class="sumrow"><b>Balance Due</b><b>${fmt(b.due)}</b></div><div class="grand"><small>GRAND TOTAL / कुल बिल</small><strong>${fmt(b.total)}</strong></div></div><div class="billfoot"><span>Customer Signature / ग्राहक हस्ताक्षर<br><br>_________________</span><span>For Mahender Jewellers<br><br>_________________</span></div><p style="text-align:center;font-size:11px;margin-top:20px">Thank You · धन्यवाद</p></div>`;window.currentBill=b}
 function downloadJpg(){let el=$('customerBill');if(!el)return;let clone=el.cloneNode(true);clone.style.width='900px';clone.style.maxWidth='none';clone.style.position='fixed';clone.style.left='-2000px';document.body.appendChild(clone);let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="${Math.max(1200,clone.scrollHeight+100)}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,sans-serif;background:white;padding:35px;color:#211b10">${clone.innerHTML}</div></foreignObject></svg>`;let blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),img=new Image();img.onload=()=>{let c=document.createElement('canvas');c.width=1000;c.height=Math.max(1200,clone.scrollHeight+100);let ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(window.currentBill?.id||'Mahender-Bill')+'.jpg';a.click();URL.revokeObjectURL(a.href);URL.revokeObjectURL(url);clone.remove()},'image/jpeg',.94)};img.onerror=()=>{alert('JPG export is not supported by this browser. Use Print > Save as PDF.');URL.revokeObjectURL(url);clone.remove()};img.src=url}
