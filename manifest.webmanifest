@@ -1,0 +1,10 @@
+{
+  "name": "Mahender Jewellers Pro",
+  "short_name": "Mahender Jewellers",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f2e9",
+  "theme_color": "#80520f",
+  "description": "Offline jewellery billing, customer book, khata and daily cash book"
+}
