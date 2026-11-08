@@ -389,7 +389,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px 5px;b
 </main>
 
 <script>
-const webAppUrl = "https://script.google.com/macros/s/AKfycbwWWOtGlpywvmz5Qr7wA8_TU7CYWi7Cn6D8SWf8SdkVO1SmQBTxxUSgUF5DvgScMegv/exec";
+const webAppUrl = "https://script.google.com/macros/s/AKfycbwiO76CXmqJd3kejTDQHsXAm7TGErWSLBOQ_OeQjl_xSoeytA_-0RuVELlCutW48nfm/exec";
 const $=id=>document.getElementById(id), today=()=>new Date().toISOString().slice(0,10), num=v=>Math.max(0,Number(v)||0);
 const fmt=n=>'₹'+(Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -400,37 +400,37 @@ function load(){
     db=JSON.parse(localStorage.getItem('mj_pro_db')||'null')||db;
   }catch(e){}
   
-  // Google Sheet से क्लाउड डेटा लोड करें ताकि हर डिवाइस पर दिखे
+  // Google Sheet से डेटा लोड करने का सुरक्षित तरीका (JSONP तकनीक)
   if(webAppUrl) {
-    fetch(webAppUrl)
-      .then(res => res.json())
-      .then(cloudBills => {
-        if(Array.isArray(cloudBills) && cloudBills.length > 0) {
-          // शीट के बिलों को लोकल DB में सिंक करें
-          cloudBills.forEach(cb => {
-            if(!db.bills.some(b => b.id === cb.id)) {
-              db.bills.push({
-                id: cb.id,
-                date: cb.date,
-                customer: cb.customer,
-                mobile: cb.mobile,
-                total: cb.total,
-                paid: cb.paid,
-                due: cb.due,
-                items: []
-              });
-              // साथ ही कस्टमर लिस्ट भी अपडेट करें
-              if(cb.customer && !db.customers.some(c => c.name.toLowerCase() === cb.customer.toLowerCase())) {
-                db.customers.push({id:'C'+Date.now()+Math.random(), name:cb.customer, mobile:cb.mobile||'', address:''});
-              }
-            }
-          });
-          persist();
-        }
-      })
-      .catch(err => console.log("Load sync error:", err));
+    let script = document.createElement('script');
+    script.src = webAppUrl + "?callback=handleCloudData";
+    document.body.appendChild(script);
   }
 }
+
+// क्लाउड डेटा हैंडल करने का ग्लोबल फंक्शन
+window.handleCloudData = function(cloudBills) {
+  if(Array.isArray(cloudBills) && cloudBills.length > 0) {
+    cloudBills.forEach(cb => {
+      if(!db.bills.some(b => b.id === cb.id)) {
+        db.bills.push({
+          id: cb.id,
+          date: cb.date,
+          customer: cb.customer,
+          mobile: cb.mobile,
+          total: cb.total,
+          paid: cb.paid,
+          due: cb.due,
+          items: []
+        });
+        if(cb.customer && !db.customers.some(c => c.name.toLowerCase() === cb.customer.toLowerCase())) {
+          db.customers.push({id:'C'+Date.now()+Math.random(), name:cb.customer, mobile:cb.mobile||'', address:''});
+        }
+      }
+    });
+    persist();
+  }
+};
 
 function persist(){localStorage.setItem('mj_pro_db',JSON.stringify(db));refreshAll()}
 function tab(id){document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));if(id==='customersPanel')renderCustomers();if(id==='khataPanel')renderKhata();if(id==='dailyPanel')renderDaily();if(id==='historyPanel')renderHistory()}
@@ -491,7 +491,7 @@ function saveBill(){
   alert('Bill saved and synced! / बिल सेव हो गया।');
 }
 function logoSvg(){return `<svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="96" height="96" rx="18" fill="#f6edda" stroke="#a97820" stroke-width="3"/><path d="M50 12 83 42 50 86 17 42Z" fill="#d6a83d" stroke="#8a5b12" stroke-width="2"/><path d="M17 42h66L50 86Z" fill="#f9e7b6"/><path d="M50 12 68 42H32Z" fill="#fff7df"/><text x="50" y="98" text-anchor="middle" font-size="8" fill="#6d4a13">MJ</text></svg>`}
-function showCustomerBill(b){tab('billPanel');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));$('billPanel').classList.add('active');$('billPanel').innerHTML=`<div class="card no-print actions"><button onclick="window.print()">Print / Save PDF</button><button class="alt" onclick="downloadJpg()">Download JPG</button><button class="alt" onclick="shareCustomerBill()">Share</button><button class="alt" onclick="location.reload()">Back to App</button></div><div id="customerBill"><div class="billtop"><div class="brand"><h2>MAHENDER JEWELLERS</h2><b>महेंद्र ज्वैलर्स</b><p>Titram · Kailram Wale</p><p>Customer Bill / ग्राहक बिल</p></div>${logoSvg()}</div><div class="billmeta"><div><b>Customer:</b> ${esc(b.customer)}<br><b>Mobile:</b> ${esc(b.mobile||'—')}</div><div><b>Bill No:</b> ${esc(b.id)}<br><b>Date:</b> ${esc(b.date)}</div></div><table><thead><tr><th>Item / सामान</th><th>Metal</th><th>Net Wt.</th><th>Rate / 10g</th><th>Labour + Other</th><th class="num">Amount</th></tr></thead><tbody>${b.items.map(x=>`<tr><td>${esc(x.name)}<br><small>${esc(x.purity||'')}</small></td><td>${esc(x.metal)}</td><td>${num(x.net).toFixed(3)} gm</td><td>${fmt(x.rate)}</td><td>${fmt(x.labour+num(x.other)+x.wasteValue)}</td><td class="num">${fmt(x.total)}</td></tr>`).join('')}</tbody></table><p style="font-size:12px"><b>Total Net Weight:</b> ${b.weight.toFixed(3)} gm</p><div style="margin-left:auto;max-width:320px;font-size:12px"><div class="sumrow"><span>Subtotal</span><b>${fmt(b.subtotal)}</b></div><div class="sumrow"><span>Discount</span><b>${fmt(b.discount)}</b></div><div class="sumrow"><span>GST</span><b>${fmt(b.gst)}</b></div><div class="sumrow"><span>Old Metal Exchange</span><b>${fmt(b.exchange)}</b></div><div class="sumrow"><span>Paid</span><b>${fmt(b.paid)}</b></div><div class="sumrow"><span>Balance Due</span><b>${fmt(b.due)}</b></div><div class="grand"><small>GRAND TOTAL / कुल बिल</small><strong>${fmt(b.total)}</strong></div></div><div class="billfoot"><span>Customer Signature / ग्राहक हस्ताक्षर<br><br>_________________</span><span>For Mahender Jewellers<br><br>_________________</span></div><p style="text-align:center;font-size:11px;margin-top:20px">Thank You · धन्यवाद</p></div>`;window.currentBill=b}
+function showCustomerBill(b){tab('billPanel');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));$('billPanel').classList.add('active');$('billPanel').innerHTML=`<div class="card no-print actions"><button onclick="window.print()">Print / Save PDF</button><button class="alt" onclick="downloadJpg()">Download JPG</button><button class="alt" onclick="shareCustomerBill()">Share</button><button class="alt" onclick="location.reload()">Back to App</button></div><div id="customerBill"><div class="billtop"><div class="brand"><h2>MAHENDER JEWELLERS</h2><b>महेंद्र ज्वैलर्स</b><p>Titram · Kailram Wale</p><p>Customer Bill / ग्राहक बिल</p></div>${logoSvg()}</div><div class="billmeta"><div><b>Customer:</b> ${esc(b.customer)}<br><b>Mobile:</b> ${esc(b.mobile||'—')}</div><div><b>Bill No:</b> ${esc(b.id)}<br><b>Date:</b> ${esc(b.date)}</div></div><table><thead><tr><th>Item / सामान</th><th>Metal</th><th>Net Wt.</th><th>Rate / 10g</th><th>Labour + Other</th><th class="num">Amount</th></tr></thead><tbody>${b.items.map(x=>`<tr><td>${esc(x.name)}<br><small>${esc(x.purity||'')}</small></td><td>${esc(x.metal)}</td><td>${num(x.net).toFixed(3)} gm</td><td>${fmt(x.rate)}</td><td>${fmt(x.labour+num(x.other)+x.wasteValue)}</td><td class="num">${fmt(x.total)}</td></tr>`).join('')}</tbody></table><p style="font-size:12px"><b>Total Net Weight:</b> ${b.weight.toFixed(3)} gm</p><div style="margin-left:auto;max-width:320px;font-size:12px"><div class="sumrow"><span>Subtotal</span><b>${fmt(b.subtotal)}</b></div><div class="sumrow"><span>Discount</span><b>${fmt(b.discount)}</b></div><div class="sumrow"><span>GST</span><b>${fmt(b.gst)}</b></div><div class="sumrow"><span>Old Metal Exchange</span><b>${fmt(b.exchange)}</b></div><div class="sumrow"><span>Paid</span><b>${fmt(b.paid)}</b></div><div class="sumrow"><b>Balance Due</b><b>${fmt(b.due)}</b></div><div class="grand"><small>GRAND TOTAL / कुल बिल</small><strong>${fmt(b.total)}</strong></div></div><div class="billfoot"><span>Customer Signature / ग्राहक हस्ताक्षर<br><br>_________________</span><span>For Mahender Jewellers<br><br>_________________</span></div><p style="text-align:center;font-size:11px;margin-top:20px">Thank You · धन्यवाद</p></div>`;window.currentBill=b}
 function downloadJpg(){let el=$('customerBill');if(!el)return;let clone=el.cloneNode(true);clone.style.width='900px';clone.style.maxWidth='none';clone.style.position='fixed';clone.style.left='-2000px';document.body.appendChild(clone);let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="${Math.max(1200,clone.scrollHeight+100)}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,sans-serif;background:white;padding:35px;color:#211b10">${clone.innerHTML}</div></foreignObject></svg>`;let blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),img=new Image();img.onload=()=>{let c=document.createElement('canvas');c.width=1000;c.height=Math.max(1200,clone.scrollHeight+100);let ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(window.currentBill?.id||'Mahender-Bill')+'.jpg';a.click();URL.revokeObjectURL(a.href);URL.revokeObjectURL(url);clone.remove()},'image/jpeg',.94)};img.onerror=()=>{alert('JPG export is not supported by this browser. Use Print > Save as PDF.');URL.revokeObjectURL(url);clone.remove()};img.src=url}
 async function shareCustomerBill(){let b=window.currentBill;if(!b)return;let text=`MAHENDER JEWELLERS\nCustomer: ${b.customer}\nBill: ${b.id} | ${b.date}\n${b.items.map(x=>`${x.name} (${x.metal}) ${x.net.toFixed(3)}gm = ${fmt(x.total)}`).join('\n')}\nTotal: ${fmt(b.total)}\nPaid: ${fmt(b.paid)}\nDue: ${fmt(b.due)}`;if(navigator.share){try{await navigator.share({title:'Mahender Jewellers Bill',text})}catch(e){}}else{await navigator.clipboard.writeText(text);alert('Bill text copied')}}
 function renderCustomerOptions(){let opts=db.customers.map(c=>`<option value="${esc(c.name)}">`).join('');$('customerOptions').innerHTML=opts;let s='<option value="">Select customer</option>'+db.customers.map(c=>`<option value="${c.id}">${esc(c.name)} ${esc(c.mobile)}</option>`).join('');$('khataCustomer').innerHTML=s;$('paymentCustomer').innerHTML=s}
@@ -508,7 +508,7 @@ $('addItem').onclick=()=>addItem();$('saveBill').onclick=saveBill;$('previewBill
 $('addCustomer').onclick=()=>{let name=$('newCustName').value.trim();if(!name){alert('Enter customer name');return}let c=customerId(name,$('newCustMobile').value.trim());let obj=db.customers.find(x=>x.id===c);obj.address=$('newCustAddress').value;persist();$('newCustName').value='';$('newCustMobile').value='';$('newCustAddress').value='';alert('Customer saved')};
 $('customerSearch').oninput=renderCustomers;$('khataCustomer').onchange=renderKhata;$('recordPayment').onclick=recordPayment;$('dailyDate').onchange=renderDaily;$('saveCash').onclick=saveCash;$('billSearch').oninput=renderHistory;
 
-// ऐप लोड होने पर डेटा सिंक करें
+// ऐप लोड करते ही गूगल शीट से डेटा लोड होगा
 load();
 $('billDate').value=today();$('dailyDate').value=today();$('paymentDate').value=today();$('billNo').value='MJ-'+Date.now().toString().slice(-7);addItem();renderCustomerOptions();refreshAll();
 
