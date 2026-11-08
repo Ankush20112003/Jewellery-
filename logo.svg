@@ -1,61 +1,81 @@
 <!-- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="2" y="2" width="96" height="96" rx="18" fill="#f6edda" stroke="#a97820" stroke-width="3"/><path d="M50 12 83 42 50 86 17 42Z" fill="#d6a83d" stroke="#8a5b12" stroke-width="2"/><path d="M17 42h66L50 86Z" fill="#f9e7b6"/><path d="M50 12 68 42H32Z" fill="#fff7df"/><text x="50" y="98" text-anchor="middle" font-size="8" fill="#6d4a13">MJ</text></svg> -->
 
-text_only_svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" width="100%" height="100%">
   <defs>
     <!-- Background Gradient -->
     <radialGradient id="bg" cx="50%" cy="50%" r="75%">
-      <stop offset="0%" stop-color="#1E222A"/>
-      <stop offset="100%" stop-color="#0A0B0E"/>
+      <stop offset="0%" stop-color="#1E222A" />
+      <stop offset="100%" stop-color="#0A0B0E" />
     </radialGradient>
 
     <!-- Premium Metallic Gold Gradient -->
     <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFE485"/>
-      <stop offset="25%" stop-color="#E5B242"/>
-      <stop offset="50%" stop-color="#9E711A"/>
-      <stop offset="75%" stop-color="#FAD46B"/>
-      <stop offset="100%" stop-color="#B58328"/>
+      <stop offset="0%" stop-color="#FFE485" />
+      <stop offset="25%" stop-color="#E5B242" />
+      <stop offset="50%" stop-color="#9E711A" />
+      <stop offset="75%" stop-color="#FAD46B" />
+      <stop offset="100%" stop-color="#B58328" />
     </linearGradient>
 
     <!-- Drop Shadow Filter -->
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.7"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.7" />
     </filter>
   </defs>
 
   <!-- Background -->
-  <rect width="1000" height="400" fill="url(#bg)"/>
+  <rect width="1000" height="400" fill="url(#bg)" />
 
-  <!-- TYPOGRAPHY ONLY -->
-  <g id="typography" filter="url(#shadow)">
+  <!-- TEXT ONLY LOGO -->
+  <g id="typography" fill="url(#gold)" filter="url(#shadow)">
     <!-- MAHENDER -->
-    <text x="500" y="190" 
-          font-family="'Cinzel', 'Playfair Display', 'Times New Roman', serif" 
-          font-size="76" 
-          font-weight="700" 
-          letter-spacing="16" 
-          text-anchor="middle" 
-          fill="url(#gold)">
-      MAHENDER
-    </text>
+    <g transform="translate(220, 175)">
+      <!-- M -->
+      <path d="M 0 0 L 0 -60 L 17 -60 L 31 -18 L 45 -60 L 62 -60 L 62 0 L 48 0 L 48 -40 L 34 0 L 28 0 L 14 -40 L 14 0 Z" />
+      <!-- A -->
+      <path d="M 100 0 L 81 0 L 100 -60 L 119 -60 L 138 0 L 119 0 L 115 -15 L 104 -15 Z M 108 -26 L 111 -26 L 109 -40 Z" />
+      <!-- H -->
+      <path d="M 155 0 L 155 -60 L 171 -60 L 171 -35 L 195 -35 L 195 -60 L 211 -60 L 211 0 L 195 0 L 195 -22 L 171 -22 L 171 0 Z" />
+      <!-- E -->
+      <path d="M 228 0 L 228 -60 L 268 -60 L 268 -47 L 244 -47 L 244 -35 L 264 -35 L 264 -23 L 244 -23 L 244 -13 L 271 -13 L 271 0 Z" />
+      <!-- N -->
+      <path d="M 288 0 L 288 -60 L 305 -60 L 333 -19 L 333 -60 L 348 -60 L 348 0 L 332 0 L 303 -40 L 303 0 Z" />
+      <!-- D -->
+      <path d="M 366 0 L 366 -60 L 393 -60 C 413 -60 427 -46 427 -30 C 427 -14 413 0 393 0 Z M 382 -13 L 392 -13 C 404 -13 411 -19 411 -30 C 411 -40 404 -47 392 -47 L 382 -47 Z" />
+      <!-- E -->
+      <path d="M 444 0 L 444 -60 L 484 -60 L 484 -47 L 460 -47 L 460 -35 L 480 -35 L 480 -23 L 460 -23 L 460 -13 L 487 -13 L 487 0 Z" />
+      <!-- R -->
+      <path d="M 504 0 L 504 -60 L 533 -60 C 549 -60 559 -50 559 -35 C 559 -25 553 -18 543 -15 L 560 0 L 542 0 L 527 -14 L 520 -14 L 520 0 Z M 520 -25 L 531 -25 C 539 -25 543 -29 543 -35 C 543 -41 539 -46 531 -46 L 520 -46 Z" />
+    </g>
 
     <!-- JEWELLERS -->
-    <text x="500" y="270" 
-          font-family="'Montserrat', 'Helvetica Neue', 'Arial', sans-serif" 
-          font-size="32" 
-          font-weight="400" 
-          letter-spacing="22" 
-          text-anchor="middle" 
-          fill="url(#gold)">
-      JEWELLERS
-    </text>
+    <g transform="translate(262, 255)">
+      <!-- J -->
+      <path d="M 20 0 C 9 0 0 -7 0 -17 L 8 -17 C 8 -10 13 -6 20 -6 C 27 -6 31 -10 31 -16 L 31 -32 L 40 -32 L 40 -15 C 40 -5 32 0 20 0 Z" />
+      <!-- E -->
+      <path d="M 68 0 L 68 -32 L 92 -32 L 92 -25 L 76 -25 L 76 -19 L 90 -19 L 90 -13 L 76 -13 L 76 -7 L 93 -7 L 93 0 Z" />
+      <!-- W -->
+      <path d="M 120 0 L 112 -32 L 120 -32 L 126 -10 L 133 -32 L 140 -32 L 147 -10 L 153 -32 L 161 -32 L 153 0 L 145 0 L 137 -20 L 129 0 Z" />
+      <!-- E -->
+      <path d="M 188 0 L 188 -32 L 212 -32 L 212 -25 L 196 -25 L 196 -19 L 210 -19 L 210 -13 L 196 -13 L 196 -7 L 213 -7 L 213 0 Z" />
+      <!-- L -->
+      <path d="M 240 0 L 240 -32 L 248 -32 L 248 -7 L 264 -7 L 264 0 Z" />
+      <!-- L -->
+      <path d="M 292 0 L 292 -32 L 300 -32 L 300 -7 L 316 -7 L 316 0 Z" />
+      <!-- E -->
+      <path d="M 344 0 L 344 -32 L 368 -32 L 368 -25 L 352 -25 L 352 -19 L 366 -19 L 366 -13 L 352 -13 L 352 -7 L 369 -7 L 369 0 Z" />
+      <!-- R -->
+      <path d="M 396 0 L 396 -32 L 413 -32 C 422 -32 428 -27 428 -19 C 428 -13 424 -9 418 -7 L 429 0 L 419 0 L 409 -7 L 404 -7 L 404 0 Z M 404 -13 L 411 -13 C 416 -13 420 -15 420 -19 C 420 -23 416 -25 411 -25 L 404 -25 Z" />
+      <!-- S -->
+      <path d="M 450 -9 C 453 -6 459 -4 465 -4 C 471 -4 474 -6 474 -9 C 474 -12 470 -14 462 -16 C 453 -19 447 -22 447 -28 C 447 -35 454 -39 464 -39 C 472 -39 478 -35 481 -31 L 475 -26 C 472 -30 468 -32 463 -32 C 458 -32 455 -30 455 -28 C 455 -25 458 -23 466 -21 C 476 -19 482 -15 482 -9 C 482 -2 475 3 464 3 C 455 3 448 -2 443 -6 Z" />
+    </g>
 
-    <!-- ELEGANT MINIMALIST DIVIDER -->
-    <g transform="translate(500, 315)" stroke="url(#gold)" fill="none" stroke-width="2.5" stroke-linecap="round">
-      <path d="M -140 0 C -90 -16 -40 16 0 0 C 40 16 90 -16 140 0"/>
-      <circle cx="0" cy="0" r="4.5" fill="url(#gold)" stroke="none"/>
-      <circle cx="-150" cy="0" r="3" fill="url(#gold)" stroke="none"/>
-      <circle cx="150" cy="0" r="3" fill="url(#gold)" stroke="none"/>
+    <!-- MINIMALIST ELEGANT DIVIDER -->
+    <g transform="translate(500, 310)" stroke="url(#gold)" fill="none" stroke-width="2.5" stroke-linecap="round">
+      <path d="M -150 0 C -100 -16 -45 16 0 0 C 45 16 100 -16 150 0" />
+      <circle cx="0" cy="0" r="4.5" fill="url(#gold)" stroke="none" />
+      <circle cx="-160" cy="0" r="3" fill="url(#gold)" stroke="none" />
+      <circle cx="160" cy="0" r="3" fill="url(#gold)" stroke="none" />
     </g>
   </g>
 </svg>
