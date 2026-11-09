@@ -102,8 +102,10 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
     onblur="saveBillCustomer()">
 </div>
 <div><label>Bill Date</label><input id="billDate" type="date"></div>
-<div><label>Bill Number</label><input id="billNo"></div>
-</div>
+<div>
+  <label>Bill Number</label>
+  <input id="billNo" readonly>
+</div></div>
 <h3>Jewellery Items</h3>
 <div id="items"></div>
 <button onclick="addItem()">+ Add Item</button>
@@ -381,6 +383,7 @@ auth.onAuthStateChanged(async user => {
         );
 
         render();
+        $("billNo").value = getNextBillNumber();
       }
     }, error => {
       alert("Firebase Sync Error: " + error.message);
@@ -644,6 +647,15 @@ function saveBillCustomer() {
 
   persist();
 }
+  function getNextBillNumber() {
+  const numbers = db.bills
+    .map(b => Number(b.id))
+    .filter(n => Number.isInteger(n) && n > 0);
+
+  return String(
+    numbers.length ? Math.max(...numbers) + 1 : 1
+  );
+}
 function saveBill(){
   const name=$("customer").value.trim();
   if(!name) return alert("Customer name enter karein");
@@ -731,6 +743,8 @@ function saveBill(){
 
   persist();
   printBill();
+
+  $("billNo").value = getNextBillNumber();
 }
 function printBill(){
   const t=totals();
@@ -941,7 +955,7 @@ function backup(){
   a.download="mahender-jewellers-backup.json";a.click();
 }
 $("billDate").value=today();$("paymentDate").value=today();$("cashDate").value=today();
-$("billNo").value="MJ-"+Date.now().toString().slice(-7);
+// $("billNo").value="MJ-"+Date.now().toString().slice(-7);
 addItem();
   async function downloadBillJPG() {
 
