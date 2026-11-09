@@ -240,15 +240,33 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 </section>
 </main>
 </div>
+<!-- 1. HTML to Image Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<!-- 2. Excel Backup Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- 3. PDF Main Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+
+<!-- 4. PDF Table Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 
+<!-- 5. Firebase App -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+<!-- 6. Firebase Authentication -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<!-- 7. Firebase Firestore Database -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
+<!-- 8. Your Main Application JavaScript -->
+<script>
+  // Yahan aapka existing JavaScript code rahega
+</script>
+
+  
 <script>
 // STEP: Replace these values with your Firebase Web App config.
 const firebaseConfig = {
@@ -1157,6 +1175,11 @@ function backupPDF() {
     unit: "mm",
     format: "a4"
   });
+
+  if (typeof doc.autoTable !== "function") {
+    alert("PDF Table library load nahi hui. Page refresh karein.");
+    return;
+  }
 
   let y = 18;
 
