@@ -24,6 +24,103 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 .total{background:#f5ead3;padding:12px;border-radius:8px;margin:10px 0}
 .small{font-size:12px;color:#756b5c}
+
+/* ===== FONT SIZE IMPROVEMENT ===== */
+body {
+  font-size: 16px;
+}
+
+label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+input, select, textarea {
+  font-size: 16px;
+  padding: 12px;
+}
+
+button {
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+table {
+  font-size: 14px;
+}
+
+td, th {
+  padding: 10px;
+}
+
+.small {
+  font-size: 13px;
+}
+
+/* ===== NAVIGATION ANIMATION ===== */
+nav {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  z-index: 100;
+}
+
+nav button {
+  transition: all 0.25s ease;
+}
+
+nav button:hover {
+  transform: translateY(-3px);
+  background: #684713;
+}
+
+nav button.active {
+  background: #563b12;
+  color: #f4d58a;
+  box-shadow: 0 3px 9px rgba(86,59,18,0.3);
+  transform: scale(1.04);
+}
+
+/* ===== PAGE OPEN ANIMATION ===== */
+section.active {
+  display: block;
+  animation: pageOpen 0.35s ease;
+}
+
+@keyframes pageOpen {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== CARD ANIMATION ===== */
+.card {
+  transition: box-shadow 0.25s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 14px rgba(70,50,20,0.08);
+}
+
+@media(max-width:550px) {
+  body {
+    font-size: 16px;
+  }
+
+  nav button {
+    font-size: 14px;
+    padding: 11px 13px;
+  }
+
+  table {
+    font-size: 13px;
+  }
+}
+
 @media(max-width:550px){.grid{grid-template-columns:1fr}}
 @media print {
   body {
@@ -67,16 +164,18 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 </div>
 
 <div id="app" hidden>
+
 <nav class="no-print">
-<button onclick="show('billing')">New Bill</button>
-<button onclick="show('customers')">Customers</button>
-<button onclick="show('khata')">Khata</button>
-<button onclick="show('daily')">Daily Cash</button>
-<button onclick="show('history')">Bill History</button>
+<button class="nav-btn active" data-section="billing" onclick="show('billing')">New Bill</button>
+<button class="nav-btn" data-section="customers" onclick="show('customers')">Customers</button>
+<button class="nav-btn" data-section="khata" onclick="show('khata')">Khata</button>
+<button class="nav-btn" data-section="daily" onclick="show('daily')">Daily Cash</button>
+<button class="nav-btn" data-section="history" onclick="show('history')">Bill History</button>
 <button onclick="backup()">Excel Backup</button>
 <button onclick="backupPDF()">PDF Backup</button>
 <button onclick="logoutUser()">Logout</button>
 </nav>
+
 
 <main>
 <section id="billing" class="active">
@@ -198,7 +297,40 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 </div>
 </section>
 
+
 <section id="khata">
+<div class="card">
+<h2>Customer Khata</h2>
+
+<label>Search Customer by Name / Mobile / Bill Number</label>
+<input
+  id="khataSearch"
+  type="search"
+  placeholder="Name, mobile number ya bill number enter karein..."
+  oninput="searchKhataCustomer()">
+
+<label>Select Customer</label>
+<select id="khataCustomer" onchange="renderKhata()"></select>
+
+<div id="khataRows"></div>
+</div>
+
+<div class="card">
+<h3>Receive Payment</h3>
+<label>Customer</label><select id="paymentCustomer"></select>
+<label>Amount ₹</label><input id="paymentAmount" type="number">
+<label>Date</label><input id="paymentDate" type="date">
+<label>Payment Mode</label>
+<select id="paymentMode">
+  <option>Cash</option>
+  <option>UPI</option>
+  <option>Card</option>
+  <option>Bank</option>
+</select>
+<button onclick="receivePayment()">Save Payment</button>
+</div>
+</section>
+
 <div class="card">
 <h2>Customer Khata</h2>
 <label>Select Customer</label><select id="khataCustomer" onchange="renderKhata()"></select>
@@ -443,11 +575,24 @@ function persist() {
   saveCloud();
 }
 
-function show(id){
-  document.querySelectorAll("main section").forEach(s=>s.classList.remove("active"));
+
+function show(id) {
+  document.querySelectorAll("main section").forEach(s => {
+    s.classList.remove("active");
+  });
+
   $(id).classList.add("active");
+
+  document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.classList.toggle(
+      "active",
+      btn.dataset.section === id
+    );
+  });
+
   render();
 }
+
 
 function addItem(){
   const id=++itemCount;
@@ -781,45 +926,51 @@ function printBill(){
   <p>Thank you · धन्यवाद</p>`;
   window.print();
 }
-function addCustomer(){
-  const name=$("newName").value.trim();
-  if(!name)return alert("Name required");
-  db.customers.push({id:"C"+Date.now(),name,mobile:$("newMobile").value,address:$("newAddress").value});
-  persist();$("newName").value="";$("newMobile").value="";$("newAddress").value="";
+function addCustomer() {
+  const name = $("newName").value.trim();
+  const mobile = $("newMobile").value.trim();
+  const address = $("newAddress").value.trim();
+
+  if (!name) {
+    return alert("Customer name enter karein");
+  }
+
+  db.customers.push({
+    id: "C" + Date.now(),
+    name,
+    mobile,
+    address
+  });
+
+  persist();
+
+  $("newName").value = "";
+  $("newMobile").value = "";
+  $("newAddress").value = "";
 }
+
 function render() {
-  const opts = db.customers.map(c =>
-    `<option value="${safe(c.name)}">`
-  ).join("");
+  const opts = db.customers
+    .map(c => `<option value="${safe(c.name)}">`)
+    .join("");
 
   $("customerList").innerHTML = opts;
 
-  const choices = db.customers.map(c =>
-    `<option value="${c.id}">
-      ${safe(c.name)} (${safe(c.mobile)})
-    </option>`
-  ).join("");
+  const choices = db.customers
+    .map(c => `<option value="${safe(c.id)}">${safe(c.name)} (${safe(c.mobile)})</option>`)
+    .join("");
 
   $("khataCustomer").innerHTML = choices;
   $("paymentCustomer").innerHTML = choices;
 
   const q = ($("customerSearch")?.value || "").toLowerCase();
 
-  const filteredCustomers = db.customers.filter(c =>
-    (c.name + c.mobile + c.address).toLowerCase().includes(q)
-  );
-
-  $("customerRows").innerHTML = filteredCustomers.map(c => `
-    <div class="item">
-      <b>${safe(c.name)}</b>
-      <p>Mobile: ${safe(c.mobile || "-")}</p>
-      <p>Address: ${safe(c.address || "-")}</p>
-      <h3>Outstanding: ${customerBalanceText(c.id)}</h3>
-      <button onclick="openCustomerKhata('${safe(c.id)}')">
-        Open Khata
-      </button>
-    </div>
-  `).join("") || "No customers found";
+  $("customerRows").innerHTML = db.customers
+    .filter(c =>
+      `${c.name} ${c.mobile} ${c.address}`.toLowerCase().includes(q)
+    )
+    .map(c => `<p>${safe(c.name)} · ${safe(c.mobile)} · ${safe(c.address)}</p>`)
+    .join("");
 
   renderKhata();
   renderDaily();
@@ -930,6 +1081,52 @@ function customerBalanceText(id) {
 // CUSTOMER KHATA
 // =====================================
 
+function searchKhataCustomer() {
+  const q = $("khataSearch").value.trim().toLowerCase();
+
+  if (!q) {
+    const allOptions = db.customers.map(c =>
+      `<option value="${safe(c.id)}">${safe(c.name)} (${safe(c.mobile || "")})</option>`
+    ).join("");
+
+    $("khataCustomer").innerHTML = allOptions;
+    renderKhata();
+    return;
+  }
+
+  const matched = db.customers.filter(c => {
+    const name = String(c.name || "").toLowerCase();
+    const mobile = String(c.mobile || "").replace(/\D/g, "");
+    const searchMobile = q.replace(/\D/g, "");
+
+    const nameMatch = name.includes(q);
+    const mobileMatch =
+      searchMobile.length > 0 &&
+      mobile.includes(searchMobile);
+
+    const billMatch = db.bills.some(b =>
+      b.customerId === c.id &&
+      String(b.id || "").toLowerCase().includes(q)
+    );
+
+    return nameMatch || mobileMatch || billMatch;
+  });
+
+  $("khataCustomer").innerHTML = matched.map(c =>
+    `<option value="${safe(c.id)}">${safe(c.name)} (${safe(c.mobile || "")})</option>`
+  ).join("");
+
+  if (matched.length > 0) {
+    $("khataCustomer").value = matched[0].id;
+    renderKhata();
+  } else {
+    $("khataRows").innerHTML =
+      "<p>No customer found. Name, mobile ya bill number check karein.</p>";
+  }
+}
+
+  
+  
 function renderKhata() {
   const id = $("khataCustomer").value;
   const c = db.customers.find(x => x.id === id);
@@ -939,106 +1136,65 @@ function renderKhata() {
     return;
   }
 
-  const ps = db.payments
-    .filter(p => p.customerId === id)
-    .sort((a, b) =>
-      String(a.date || "").localeCompare(String(b.date || ""))
-    );
-
-  let runningBalance = 0;
-
-  const rows = ps.map(p => {
-    const amount = Number(p.amount || 0);
-
-    if (p.type === "debit") {
-      runningBalance += amount;
-    } else {
-      runningBalance -= amount;
-    }
-
-    return `
-      <tr>
-        <td>${safe(p.date || "")}</td>
-        <td>${safe(p.note || "Payment")}</td>
-        <td>${p.type === "debit" ? money(amount) : "-"}</td>
-        <td>${p.type === "credit" ? money(amount) : "-"}</td>
-        <td>${money(runningBalance)}</td>
-      </tr>
-    `;
-  }).join("");
-
-  const currentBalance = balance(id);
+  const ps = db.payments.filter(p => p.customerId === id);
 
   $("khataRows").innerHTML = `
-    <h3>${safe(c.name)}</h3>
-    <div class="total">
-      <b>Current Outstanding Due:</b>
-      <h2>${customerBalanceText(id)}</h2>
-      <span class="small">
-        Total Debit: ${money(ps.filter(p => p.type === "debit")
-          .reduce((s, p) => s + Number(p.amount || 0), 0))}
-        <br>
-        Total Received: ${money(ps.filter(p => p.type === "credit")
-          .reduce((s, p) => s + Number(p.amount || 0), 0))}
-      </span>
-    </div>
+    <h3>${safe(c.name)} | Balance ${money(balance(id))}</h3>
 
-    <div style="overflow-x:auto">
-      <table>
+    <table>
+      <tr>
+        <th>Date</th>
+        <th>Details</th>
+        <th>Debit</th>
+        <th>Credit</th>
+      </tr>
+
+      ${ps.map(p => `
         <tr>
-          <th>Date</th>
-          <th>Details</th>
-          <th>Debit</th>
-          <th>Credit</th>
-          <th>Balance</th>
+          <td>${safe(p.date || "")}</td>
+          <td>${safe(p.note || "Payment")}</td>
+          <td>${p.type === "debit" ? money(p.amount) : "-"}</td>
+          <td>${p.type === "credit" ? money(p.amount) : "-"}</td>
         </tr>
-        ${rows || `<tr><td colspan="5">No Khata entries</td></tr>`}
-      </table>
-    </div>
+      `).join("")}
+    </table>
   `;
 }
 function receivePayment() {
   const id = $("paymentCustomer").value;
   const amount = Number($("paymentAmount").value);
+
   const c = db.customers.find(x => x.id === id);
 
-  if (!c) return alert("Customer select karein");
-  if (!amount || amount <= 0)
-    return alert("Valid payment amount enter karein");
+  if (!c || !Number.isFinite(amount) || amount <= 0) {
+    return alert("Customer aur valid amount enter karein");
+  }
 
   const date = $("paymentDate").value || today();
-  const mode = $("paymentMode").value;
 
-  // Khata mein received payment ki Credit entry
   db.payments.push({
     id: "P" + Date.now(),
     customerId: id,
-    date: date,
+    date,
     type: "credit",
-    amount: amount,
-    note: "Payment received (" + mode + ")"
+    amount,
+    note: "Payment received"
   });
 
-  // Daily Cash Book mein Cash In entry
   db.cash.push({
     id: "R" + Date.now(),
-    date: date,
+    date,
     type: "in",
-    amount: amount,
+    amount,
     category: "Khata payment",
-    description: c.name + " - " + mode
+    description: c.name
   });
 
   persist();
 
   $("paymentAmount").value = "";
 
-  alert(
-    "Payment successfully received!\n" +
-    "Customer: " + c.name + "\n" +
-    "Received: " + money(amount) + "\n" +
-    "Remaining Balance: " + customerBalanceText(id)
-  );
+  alert("Payment saved");
 }
 function saveCash(){
   const amount=Number($("cashAmount").value);
@@ -1058,27 +1214,34 @@ function renderHistory() {
   const q = ($("billSearch")?.value || "").toLowerCase();
 
   const bills = db.bills.filter(b =>
-    (b.customer + b.id + b.date).toLowerCase().includes(q)
+    `${b.customer || ""} ${b.id || ""} ${b.date || ""}`
+      .toLowerCase()
+      .includes(q)
   );
 
-  $("billRows").innerHTML = bills.map(b => {
-    const remainingDue = getBillDue(b);
+  $("billRows").innerHTML = bills.map(b => `
+    <div class="item">
+      <b>${safe(b.id)}</b>
 
-    return `
-      <div class="item">
-        <b>Bill No. ${safe(b.id)}</b>
-        <p>${safe(b.date)} · ${safe(b.customer)}</p>
-        <p>Total: ${money(b.total)}</p>
-        <p>Initial Paid: ${money(b.paid)}</p>
-        <h3>Remaining Due: ${money(remainingDue)}</h3>
+      <p>${safe(b.date)} · ${safe(b.customer)}</p>
 
-        <button onclick="editBill('${safe(b.id)}')">Edit</button>
-        <button onclick="reprintBill('${safe(b.id)}')">Reprint</button>
-        <button onclick="deleteBill('${safe(b.id)}')"
-          style="background:#a83232">Delete</button>
-      </div>
-    `;
-  }).join("") || "No bills found";
+      <p>
+        Total: ${money(b.total)}
+        | Paid: ${money(b.paid)}
+        | Due: ${money(getBillDue(b))}
+      </p>
+
+      <button onclick="editBill('${safe(b.id)}')">Edit</button>
+
+      <button onclick="reprintBill('${safe(b.id)}')">Reprint</button>
+
+      <button
+        onclick="deleteBill('${safe(b.id)}')"
+        style="background:#a83232">
+        Delete
+      </button>
+    </div>
+  `).join("") || "No bills found";
 }
 function editBill(id){
   const b=db.bills.find(x=>x.id===id);
