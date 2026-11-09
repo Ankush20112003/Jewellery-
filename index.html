@@ -1242,52 +1242,85 @@ function backupPDF() {
   y = 28;
   heading("BILL REGISTER WITH EXCHANGE DETAILS");
 
-  const billRows = bills.map(b => {
-    const e = b.exchangeDetails || {};
+  
 
-    const exchangeDetails = e.metal
-      ? [
-          e.metal,
-          e.item,
-          e.purity,
-          "Gross: " + (e.gross || 0),
-          "Stone: " + (e.stone || 0),
-          "Net: " + (
-            Number(e.gross || 0) - Number(e.stone || 0)
-          ),
-          "Tunch: " + (e.tunch || 0) + "%",
-          "Rate: " + (e.rate || 0),
-          "Deduction: " + (e.deduction || 0)
-        ].filter(Boolean).join(" | ")
-      : "No Exchange";
+// =====================================
+// 1. COMPLETE BILL REGISTER + EXCHANGE
+// =====================================
 
+const billRows = bills.map(b => {
+  const e = b.exchangeDetails || {};
+
+  // Complete jewellery item details
+  const itemDetails = (b.items || []).map((item, index) => {
     return [
-      b.date || "",
-      b.id || "",
-      b.customer || "",
-      b.mobile || "",
-      money(b.total),
-      exchangeDetails,
-      money(b.exchange),
-      money(b.paid),
-      money(b.due)
-    ];
-  });
+      "ITEM " + (index + 1),
+      "Metal: " + (item.metalType || ""),
+      "Item Name: " + (item.name || ""),
+      "Carat / Purity: " + (item.purity || ""),
+      "Gross Weight: " + Number(item.gross || 0).toFixed(3) + " gm",
+      "Stone Weight: " + Number(item.stone || 0).toFixed(3) + " gm",
+      "Net Weight: " + Number(item.net || 0).toFixed(3) + " gm",
+      "Tunch: " + (item.tunch || 0) + "%",
+      "Rate per 10 gm: " + money(item.rate),
+      "Metal Value: " + money(item.metalValue),
+      "Labour Input: " + (item.labourInput ?? item.labour ?? 0),
+      "Labour Type: " + (item.labourType || "fixed"),
+      "Labour Amount: " + money(item.labour),
+      "Wastage: " + (item.wastage || 0) + "%",
+      "Wastage Amount: " + money(item.waste),
+      "Other Charges: " + money(item.other),
+      "Item Total: " + money(item.total)
+    ].join("\n");
+  }).join("\n\n");
 
-  addTable(
-    [
-      "Date",
-      "Bill No.",
-      "Customer",
-      "Mobile",
-      "Bill Amount",
-      "Exchange Details",
-      "Exchange Amount",
-      "Paid",
-      "Due"
-    ],
-    billRows
-  );
+  // Complete old gold / silver exchange details
+  const exchangeDetails = Number(b.exchange || 0) > 0
+    ? [
+        "Metal: " + (e.metal || ""),
+        "Old Item: " + (e.item || ""),
+        "Carat / Purity: " + (e.purity || ""),
+        "Gross Weight: " + Number(e.gross || 0).toFixed(3) + " gm",
+        "Stone Weight: " + Number(e.stone || 0).toFixed(3) + " gm",
+        "Net Weight: " + Number(e.net ?? (Number(e.gross || 0) - Number(e.stone || 0))).toFixed(3) + " gm",
+        "Tunch: " + (e.tunch || 0) + "%",
+        "Rate per 10 gm: " + money(e.rate),
+        "Metal Value: " + money(e.metalValue),
+        "Deduction: " + (e.deduction || 0) + "%",
+        "Deduction Amount: " + money(e.deductionAmount),
+        "Exchange Amount: " + money(b.exchange)
+      ].join("\n")
+    : "No Exchange";
+
+  return [
+    b.date || "",
+    b.id || "",
+    b.customer || "",
+    b.mobile || "",
+    itemDetails || "No Item Details",
+    exchangeDetails,
+    money(b.exchange),
+    money(b.total),
+    money(b.paid),
+    money(b.due)
+  ];
+});
+
+addTable(
+  [
+    "Date",
+    "Bill No.",
+    "Customer",
+    "Mobile",
+    "Complete Jewellery Details",
+    "Complete Exchange Details",
+    "Exchange Amount",
+    "Bill Total",
+    "Paid",
+    "Due"
+  ],
+  billRows
+);
 
   // =====================================
   // 2. DAILY CASH BOOK + DAILY SUMMARY
