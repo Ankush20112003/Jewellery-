@@ -1157,9 +1157,10 @@ function backup() {
   );
 }
 
+
 function backupPDF() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert("jsPDF load nahi hui. Internet connection check karein.");
+    alert("PDF library load nahi hui. Page refresh karke try karein.");
     return;
   }
 
@@ -1171,9 +1172,12 @@ function backupPDF() {
   });
 
   if (typeof doc.autoTable !== "function") {
-    alert("AutoTable plugin load nahi hua.");
+    alert("PDF Table library load nahi hui. Page refresh karein.");
     return;
   }
+
+  const bills = db.bills || [];
+  const cashEntries = db.cash || [];
 
   let y = 18;
 
@@ -1183,22 +1187,21 @@ function backupPDF() {
       y = 18;
     }
 
-    doc.setFontSize(15);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
     doc.text(title, 14, y);
-    y += 7;
+    y += 5;
   }
 
-  function addTable(title, columns, rows) {
-    heading(title);
-
-    if (typeof doc.autoTable !== "function") {
-      throw new Error("PDF table plugin load nahi hua.");
-    }
-
+  function addTable(columns, rows) {
     doc.autoTable({
       startY: y,
       head: [columns],
-      body: rows,
+      body: rows.length
+        ? rows
+        : [columns.map((_, i) =>
+            i === 0 ? "No records found" : ""
+          )],
       theme: "grid",
       styles: {
         fontSize: 7,
@@ -1206,142 +1209,197 @@ function backupPDF() {
         overflow: "linebreak"
       },
       headStyles: {
-        fillColor: [86, 59, 18]
+        fillColor: [90, 65, 35],
+        textColor: 255,
+        fontStyle: "bold"
       },
-      margin: { left: 10, right: 10 }
+      margin: { left: 14, right: 14 }
     });
 
-    y = doc.lastAutoTable.finalY + 12;
+    y = doc.lastAutoTable.finalY + 10;
   }
 
-  try {
-    doc.setFontSize(19);
-    doc.text("MAHENDER JEWELLERS", 148, y, { align: "center" });
-    y += 7;
-
-    doc.setFontSize(10);
-    doc.text("Titram | Kailram Wale | Complete Data Backup", 148, y, {
-      align: "center"
-    });
-    y += 10;
-
-    doc.setFontSize(9);
-    doc.text("Backup Date: " + today(), 14, y);
-    y += 10;
-
-    // Customer Master
-    addTable("1. CUSTOMER MASTER",
-      ["ID", "Name", "Mobile", "Address"],
-      db.customers.map(c => [
-        c.id, c.name, c.mobile || "", c.address || ""
-      ])
-    );
-
-    // Bill Register
-    addTable("2. BILL REGISTER",
-      ["Bill No.", "Date", "Customer", "Subtotal", "Discount", "GST", "Exchange", "Total", "Paid", "Due"],
-      db.bills.map(b => [
-        b.id, b.date, b.customer,
-        b.subtotal || 0, b.discount || 0, b.gst || 0,
-        b.exchange || 0, b.total || 0, b.paid || 0, b.due || 0
-      ])
-    );
-
-    // Item Details
-    const itemRows = [];
-    db.bills.forEach(b => {
-      (b.items || []).forEach(i => {
-        itemRows.push([
-          b.id, b.customer, i.name || "",
-          i.metalType || "", i.purity || "",
-          i.gross || 0, i.stone || 0, i.net || 0,
-          i.rate || 0, i.total || 0
-        ]);
-      });
-    });
-
-    addTable("3. ITEM DETAILS",
-      ["Bill", "Customer", "Item", "Metal", "Purity", "Gross", "Stone", "Net", "Rate", "Amount"],
-      itemRows
-    );
-
-    // Exchange Register
-    addTable("4. EXCHANGE REGISTER",
-      ["Bill", "Customer", "Metal", "Old Item", "Gross", "Net", "Tunch", "Rate", "Deduction", "Amount"],
-      db.bills
-        .filter(b => b.exchangeDetails || Number(b.exchange || 0) > 0)
-        .map(b => {
-          const e = b.exchangeDetails || {};
-          return [
-            b.id, b.customer, e.metal || "", e.item || "",
-            e.gross || 0, e.net || 0, e.tunch || 0,
-            e.rate || 0, e.deduction || 0, b.exchange || 0
-          ];
-        })
-    );
-
-    // Customer Khata
-    const customerMap = Object.fromEntries(
-      db.customers.map(c => [c.id, c.name])
-    );
-
-    addTable("5. CUSTOMER KHATA",
-      ["Date", "Customer", "Details", "Debit", "Credit"],
-      db.payments.map(p => [
-        p.date || "",
-        customerMap[p.customerId] || "Unknown",
-        p.note || "",
-        p.type === "debit" ? p.amount : 0,
-        p.type === "credit" ? p.amount : 0
-      ])
-    );
-
-    // Payment Register
-    addTable("6. PAYMENT REGISTER",
-      ["Payment ID", "Date", "Customer", "Type", "Amount", "Details"],
-      db.payments.map(p => [
-        p.id || "", p.date || "",
-        customerMap[p.customerId] || "Unknown",
-        p.type || "", p.amount || 0, p.note || ""
-      ])
-    );
-
-    // Daily Cash Book
-    addTable("7. DAILY CASH BOOK",
-      ["Date", "Type", "Amount", "Category", "Description"],
-      db.cash.map(c => [
-        c.date || "",
-        c.type === "in" ? "Cash In" : "Cash Out",
-        c.amount || 0,
-        c.category || "",
-        c.description || ""
-      ])
-    );
-
-    // Daily Summary
-    const summary = {};
-
-    db.cash.forEach(c => {
-      const date = c.date || "No Date";
-      if (!summary[date]) summary[date] = { in: 0, out: 0 };
-
-      if (c.type === "in") summary[date].in += Number(c.amount || 0);
-      else summary[date].out += Number(c.amount || 0);
-    });
-
-    addTable("8. DAILY CASH SUMMARY",
-      ["Date", "Cash In", "Cash Out", "Net Cash"],
-      Object.entries(summary).map(([date, v]) => [
-        date, v.in, v.out, v.in - v.out
-      ])
-    );
-
-    doc.save("Mahender-Jewellers-Backup-" + today() + ".pdf");
-
-  } catch (error) {
-    alert("PDF Backup Error: " + error.message);
+  function money(value) {
+    return Number(value || 0).toFixed(2);
   }
+
+  // =====================================
+  // 1. BILL REGISTER + EXCHANGE REGISTER
+  // =====================================
+
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("MAHENDER JEWELLERS", 148, 12, {
+    align: "center"
+  });
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text("Titram | Kailram Wale", 148, 18, {
+    align: "center"
+  });
+
+  y = 28;
+  heading("BILL REGISTER WITH EXCHANGE DETAILS");
+
+  const billRows = bills.map(b => {
+    const e = b.exchangeDetails || {};
+
+    const exchangeDetails = e.metal
+      ? [
+          e.metal,
+          e.item,
+          e.purity,
+          "Gross: " + (e.gross || 0),
+          "Stone: " + (e.stone || 0),
+          "Net: " + (
+            Number(e.gross || 0) - Number(e.stone || 0)
+          ),
+          "Tunch: " + (e.tunch || 0) + "%",
+          "Rate: " + (e.rate || 0),
+          "Deduction: " + (e.deduction || 0)
+        ].filter(Boolean).join(" | ")
+      : "No Exchange";
+
+    return [
+      b.date || "",
+      b.id || "",
+      b.customer || "",
+      b.mobile || "",
+      money(b.total),
+      exchangeDetails,
+      money(b.exchange),
+      money(b.paid),
+      money(b.due)
+    ];
+  });
+
+  addTable(
+    [
+      "Date",
+      "Bill No.",
+      "Customer",
+      "Mobile",
+      "Bill Amount",
+      "Exchange Details",
+      "Exchange Amount",
+      "Paid",
+      "Due"
+    ],
+    billRows
+  );
+
+  // =====================================
+  // 2. DAILY CASH BOOK + DAILY SUMMARY
+  // =====================================
+
+  if (y > 165) {
+    doc.addPage();
+    y = 18;
+  }
+
+  heading("DAILY CASH BOOK WITH DAILY SUMMARY");
+
+  const grouped = {};
+
+  cashEntries.forEach(c => {
+    const date = c.date || "No Date";
+
+    if (!grouped[date]) {
+      grouped[date] = {
+        entries: [],
+        cashIn: 0,
+        cashOut: 0
+      };
+    }
+
+    const type = String(c.type || "").toLowerCase();
+    const amount = Number(c.amount || 0);
+
+    const isOut =
+      type.includes("out") ||
+      type.includes("expense") ||
+      type.includes("debit") ||
+      type.includes("खर्च") ||
+      type.includes("जमा");
+
+    const direction = isOut ? "Cash Out" : "Cash In";
+
+    if (isOut) {
+      grouped[date].cashOut += amount;
+    } else {
+      grouped[date].cashIn += amount;
+    }
+
+    grouped[date].entries.push([
+      date,
+      direction,
+      money(amount),
+      c.category || "",
+      c.description || c.note || ""
+    ]);
+  });
+
+  const cashRows = [];
+
+  Object.keys(grouped).sort().forEach(date => {
+    const day = grouped[date];
+
+    day.entries.forEach(row => {
+      cashRows.push([
+        ...row,
+        "",
+        "",
+        ""
+      ]);
+    });
+
+    cashRows.push([
+      date,
+      "DAILY TOTAL",
+      "",
+      "",
+      "",
+      money(day.cashIn),
+      money(day.cashOut),
+      money(day.cashIn - day.cashOut)
+    ]);
+  });
+
+  addTable(
+    [
+      "Date",
+      "Type",
+      "Amount",
+      "Category",
+      "Description",
+      "Total Cash In",
+      "Total Cash Out",
+      "Net Cash"
+    ],
+    cashRows
+  );
+
+  // =====================================
+  // FOOTER / PAGE NUMBERS
+  // =====================================
+
+  const pageCount = doc.internal.getNumberOfPages();
+
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.text(
+      "Mahender Jewellers - Page " + i + " of " + pageCount,
+      148,
+      203,
+      { align: "center" }
+    );
+  }
+
+  doc.save("Mahender_Jewellers_Complete_Backup.pdf");
 }
+
 
 
 $("billDate").value=today();$("paymentDate").value=today();$("cashDate").value=today();
