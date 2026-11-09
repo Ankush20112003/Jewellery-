@@ -787,36 +787,258 @@ function addCustomer(){
   db.customers.push({id:"C"+Date.now(),name,mobile:$("newMobile").value,address:$("newAddress").value});
   persist();$("newName").value="";$("newMobile").value="";$("newAddress").value="";
 }
-function render(){
-  const opts=db.customers.map(c=>`<option value="${safe(c.name)}">`).join("");
-  $("customerList").innerHTML=opts;
-  const choices=db.customers.map(c=>`<option value="${c.id}">${safe(c.name)} (${safe(c.mobile)})</option>`).join("");
-  $("khataCustomer").innerHTML=choices;
-  $("paymentCustomer").innerHTML=choices;
-  const q=($("customerSearch")?.value||"").toLowerCase();
-  $("customerRows").innerHTML=db.customers.filter(c=>(c.name+c.mobile+c.address).toLowerCase().includes(q)).map(c=>`<p>${safe(c.name)} · ${safe(c.mobile)} · ${safe(c.address)}</p>`).join("");
-  renderKhata();renderDaily();renderHistory();
+function render() {
+  const opts = db.customers.map(c =>
+    `<option value="${safe(c.name)}">`
+  ).join("");
+
+  $("customerList").innerHTML = opts;
+
+  const choices = db.customers.map(c =>
+    `<option value="${c.id}">
+      ${safe(c.name)} (${safe(c.mobile)})
+    </option>`
+  ).join("");
+
+  $("khataCustomer").innerHTML = choices;
+  $("paymentCustomer").innerHTML = choices;
+
+  const q = ($("customerSearch")?.value || "").toLowerCase();
+
+  const filteredCustomers = db.customers.filter(c =>
+    (c.name + c.mobile + c.address).toLowerCase().includes(q)
+  );
+
+  $("customerRows").innerHTML = filteredCustomers.map(c => `
+    <div class="item">
+      <b>${safe(c.name)}</b>
+      <p>Mobile: ${safe(c.mobile || "-")}</p>
+      <p>Address: ${safe(c.address || "-")}</p>
+      <h3>Outstanding: ${customerBalanceText(c.id)}</h3>
+      <button onclick="openCustomerKhata('${safe(c.id)}')">
+        Open Khata
+      </button>
+    </div>
+  `).join("") || "No customers found";
+
+  renderKhata();
+  renderDaily();
+  renderHistory();
 }
-function balance(id){
-  return db.payments.filter(p=>p.customerId===id).reduce((s,p)=>s+(p.type==="debit"?p.amount:-p.amount),0);
+
+// Customer List se seedha uska Khata kholne ke liye
+function openCustomerKhata(id) {
+  $("khataCustomer").value = id;
+  show("khata");
 }
-function renderKhata(){
-  const id=$("khataCustomer").value;
-  const c=db.customers.find(x=>x.id===id);
-  if(!c){$("khataRows").innerHTML="Customer select karein";return;}
-  const ps=db.payments.filter(p=>p.customerId===id);
-  $("khataRows").innerHTML=`<h3>${safe(c.name)} | Balance ${money(balance(id))}</h3>
-  <table><tr><th>Date</th><th>Details</th><th>Debit</th><th>Credit</th></tr>
-  ${ps.map(p=>`<tr><td>${safe(p.date)}</td><td>${safe(p.note||"Payment")}</td><td>${p.type==="debit"?money(p.amount):"-"}</td><td>${p.type==="credit"?money(p.amount):"-"}</td></tr>`).join("")}</table>`;
+// =====================================
+// CUSTOMER DUE + BILL-WISE PAYMENT ADJUSTMENT
+// =====================================
+
+// Customer ka total outstanding balance
+function balance(id) {
+  return db.payments
+    .filter(p => p.customerId === id)
+    .reduce((sum, p) => {
+      const amount = Number(p.amount || 0);
+      return sum + (p.type === "debit" ? amount : -amount);
+    }, 0);
 }
-function receivePayment(){
-  const id=$("paymentCustomer").value,amount=Number($("paymentAmount").value);
-  const c=db.customers.find(x=>x.id===id);
-  if(!c||!amount||amount<=0)return alert("Customer aur amount enter karein");
-  const date=$("paymentDate").value||today();
-  db.payments.push({id:"P"+Date.now(),customerId:id,date,type:"credit",amount,note:"Payment received"});
-  db.cash.push({id:"R"+Date.now(),date,type:"in",amount,category:"Khata payment",description:c.name});
-  persist();$("paymentAmount").value="";alert("Payment saved");
+
+// Customer ke bills par received payments FIFO order mein adjust karo
+function getCustomerBillBalances(customerId) {
+  const billDebits = db.payments
+    .filter(p =>
+      p.customerId === customerId &&
+      p.type === "debit" &&
+      String(p.note || "").startsWith("Bill ")
+    )
+    .map(p => ({
+      billId: String(p.note).slice(5),
+      date: p.date || "",
+      remaining: Number(p.amount || 0)
+    }))
+    .sort((a, b) =>
+      a.date.localeCompare(b.date) ||
+      a.billId.localeCompare(b.billId, undefined, { numeric: true })
+    );
+
+  const credits = db.payments
+    .filter(p =>
+      p.customerId === customerId &&
+      p.type === "credit"
+    )
+    .sort((a, b) =>
+      String(a.date || "").localeCompare(String(b.date || ""))
+    );
+
+  // Purane bill ka due pehle adjust hoga
+  credits.forEach(payment => {
+    let remainingPayment = Number(payment.amount || 0);
+
+    for (const bill of billDebits) {
+      if (remainingPayment <= 0) break;
+      if (bill.remaining <= 0) continue;
+
+      const adjusted = Math.min(
+        bill.remaining,
+        remainingPayment
+      );
+
+      bill.remaining -= adjusted;
+      remainingPayment -= adjusted;
+    }
+  });
+
+  const result = {};
+
+  billDebits.forEach(bill => {
+    result[bill.billId] = Math.max(0, bill.remaining);
+  });
+
+  return result;
+}
+
+// Kisi particular bill ka updated due
+function getBillDue(bill) {
+  const balances = getCustomerBillBalances(bill.customerId);
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      balances,
+      String(bill.id)
+    )
+  ) {
+    return balances[String(bill.id)];
+  }
+
+  // Purane bills ke liye fallback
+  return Number(bill.due || 0);
+}
+
+// Customer ka due ya advance display
+function customerBalanceText(id) {
+  const amount = balance(id);
+
+  if (amount > 0) return money(amount) + " Due";
+  if (amount < 0) return money(Math.abs(amount)) + " Advance";
+
+  return money(0) + " Clear";
+}
+
+// =====================================
+// CUSTOMER KHATA
+// =====================================
+
+function renderKhata() {
+  const id = $("khataCustomer").value;
+  const c = db.customers.find(x => x.id === id);
+
+  if (!c) {
+    $("khataRows").innerHTML = "Customer select karein";
+    return;
+  }
+
+  const ps = db.payments
+    .filter(p => p.customerId === id)
+    .sort((a, b) =>
+      String(a.date || "").localeCompare(String(b.date || ""))
+    );
+
+  let runningBalance = 0;
+
+  const rows = ps.map(p => {
+    const amount = Number(p.amount || 0);
+
+    if (p.type === "debit") {
+      runningBalance += amount;
+    } else {
+      runningBalance -= amount;
+    }
+
+    return `
+      <tr>
+        <td>${safe(p.date || "")}</td>
+        <td>${safe(p.note || "Payment")}</td>
+        <td>${p.type === "debit" ? money(amount) : "-"}</td>
+        <td>${p.type === "credit" ? money(amount) : "-"}</td>
+        <td>${money(runningBalance)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const currentBalance = balance(id);
+
+  $("khataRows").innerHTML = `
+    <h3>${safe(c.name)}</h3>
+    <div class="total">
+      <b>Current Outstanding Due:</b>
+      <h2>${customerBalanceText(id)}</h2>
+      <span class="small">
+        Total Debit: ${money(ps.filter(p => p.type === "debit")
+          .reduce((s, p) => s + Number(p.amount || 0), 0))}
+        <br>
+        Total Received: ${money(ps.filter(p => p.type === "credit")
+          .reduce((s, p) => s + Number(p.amount || 0), 0))}
+      </span>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table>
+        <tr>
+          <th>Date</th>
+          <th>Details</th>
+          <th>Debit</th>
+          <th>Credit</th>
+          <th>Balance</th>
+        </tr>
+        ${rows || `<tr><td colspan="5">No Khata entries</td></tr>`}
+      </table>
+    </div>
+  `;
+}
+function receivePayment() {
+  const id = $("paymentCustomer").value;
+  const amount = Number($("paymentAmount").value);
+  const c = db.customers.find(x => x.id === id);
+
+  if (!c) return alert("Customer select karein");
+  if (!amount || amount <= 0)
+    return alert("Valid payment amount enter karein");
+
+  const date = $("paymentDate").value || today();
+  const mode = $("paymentMode").value;
+
+  // Khata mein received payment ki Credit entry
+  db.payments.push({
+    id: "P" + Date.now(),
+    customerId: id,
+    date: date,
+    type: "credit",
+    amount: amount,
+    note: "Payment received (" + mode + ")"
+  });
+
+  // Daily Cash Book mein Cash In entry
+  db.cash.push({
+    id: "R" + Date.now(),
+    date: date,
+    type: "in",
+    amount: amount,
+    category: "Khata payment",
+    description: c.name + " - " + mode
+  });
+
+  persist();
+
+  $("paymentAmount").value = "";
+
+  alert(
+    "Payment successfully received!\n" +
+    "Customer: " + c.name + "\n" +
+    "Received: " + money(amount) + "\n" +
+    "Remaining Balance: " + customerBalanceText(id)
+  );
 }
 function saveCash(){
   const amount=Number($("cashAmount").value);
@@ -832,25 +1054,31 @@ function renderDaily(){
   $("dailyRows").innerHTML=`<h3>Cash In: ${money(incoming)}</h3><h3>Cash Out: ${money(outgoing)}</h3><h3>Net: ${money(incoming-outgoing)}</h3>`+
   rows.map(x=>`<p>${safe(x.category)} · ${safe(x.description)} · ${x.type==="in"?"+":"-"}${money(x.amount)}</p>`).join("");
 }
-function renderHistory(){
-  const q=($("billSearch")?.value||"").toLowerCase();
+function renderHistory() {
+  const q = ($("billSearch")?.value || "").toLowerCase();
 
-  const bills=db.bills.filter(b=>
-    (b.customer+b.id+b.date).toLowerCase().includes(q)
+  const bills = db.bills.filter(b =>
+    (b.customer + b.id + b.date).toLowerCase().includes(q)
   );
 
-  $("billRows").innerHTML=bills.map(b=>`
-    <div class="item">
-      <b>${safe(b.id)}</b>
-      <p>${safe(b.date)} · ${safe(b.customer)}</p>
-      <p>Total: ${money(b.total)} | Due: ${money(b.due)}</p>
+  $("billRows").innerHTML = bills.map(b => {
+    const remainingDue = getBillDue(b);
 
-      <button onclick="editBill('${safe(b.id)}')">Edit</button>
-      <button onclick="reprintBill('${safe(b.id)}')">Reprint</button>
-      <button onclick="deleteBill('${safe(b.id)}')"
-        style="background:#a83232">Delete</button>
-    </div>
-  `).join("") || "No bills found";
+    return `
+      <div class="item">
+        <b>Bill No. ${safe(b.id)}</b>
+        <p>${safe(b.date)} · ${safe(b.customer)}</p>
+        <p>Total: ${money(b.total)}</p>
+        <p>Initial Paid: ${money(b.paid)}</p>
+        <h3>Remaining Due: ${money(remainingDue)}</h3>
+
+        <button onclick="editBill('${safe(b.id)}')">Edit</button>
+        <button onclick="reprintBill('${safe(b.id)}')">Reprint</button>
+        <button onclick="deleteBill('${safe(b.id)}')"
+          style="background:#a83232">Delete</button>
+      </div>
+    `;
+  }).join("") || "No bills found";
 }
 function editBill(id){
   const b=db.bills.find(x=>x.id===id);
@@ -969,7 +1197,10 @@ function reprintBill(id){
 ` : ""}
 
     <h3>Total: ${money(b.total)}</h3>
-    <p>Paid: ${money(b.paid)} | Due: ${money(b.due)}</p>
+    <p>
+    Initial Paid: ${money(b.paid)} |
+    Remaining Due: ${money(getBillDue(b))}
+    </p>
     <p>Thank you · धन्यवाद</p>
   `;
 
@@ -991,10 +1222,7 @@ function backup() {
     "Customer Name": c.name,
     "Mobile": c.mobile || "",
     "Address": c.address || "",
-    "Khata Balance": db.payments
-      .filter(p => p.customerId === c.id)
-      .reduce((sum, p) =>
-        sum + (p.type === "debit" ? Number(p.amount || 0) : -Number(p.amount || 0)), 0)
+    "Khata Balance": balance(c.id)
   }));
 
   // 2. BILL REGISTER
@@ -1010,7 +1238,7 @@ function backup() {
     "Exchange Amount": b.exchange || 0,
     "Total": b.total || 0,
     "Paid": b.paid || 0,
-    "Due": b.due || 0
+    "Due": getBillDue(b)
   }));
 
   // 3. ITEM DETAILS
@@ -1302,7 +1530,7 @@ const billRows = bills.map(b => {
     money(b.exchange),
     money(b.total),
     money(b.paid),
-    money(b.due)
+    money(getBillDue(b))
   ];
 });
 
