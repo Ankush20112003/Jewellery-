@@ -742,19 +742,10 @@ function printBill(){
   <table><tr><th>Item</th><th>Metal</th><th>Net gm</th><th>Rate/10gm</th><th>Amount</th></tr>
   ${t.items.map(x=>`<tr><td>${safe(x.name)} (${safe(x.purity)})</td><td>${safe(x.metalType)}</td><td>${x.net.toFixed(3)}</td><td>${money(x.rate)}</td><td>${money(x.total)}</td></tr>`).join("")}</table>
   ${t.exchange > 0 ? `
-  <h3>Old Jewellery Exchange Details</h3>
-  <table>
-    <tr><td>Metal</td><td>${safe(t.exchangeDetails.metal)}</td></tr>
-    <tr><td>Old Item</td><td>${safe(t.exchangeDetails.item)}</td></tr>
-    <tr><td>Purity</td><td>${safe(t.exchangeDetails.purity)}</td></tr>
-    <tr><td>Gross Weight</td><td>${t.exchangeDetails.gross} gm</td></tr>
-    <tr><td>Stone Weight</td><td>${t.exchangeDetails.stone} gm</td></tr>
-    <tr><td>Net Weight</td><td>${t.exchangeDetails.net.toFixed(3)} gm</td></tr>
-    <tr><td>Tunch</td><td>${t.exchangeDetails.tunch}%</td></tr>
-    <tr><td>Rate / 10 gm</td><td>${money(t.exchangeDetails.rate)}</td></tr>
-    <tr><td>Deduction</td><td>${t.exchangeDetails.deduction}% (${money(t.exchangeDetails.deductionAmount)})</td></tr>
-    <tr><td><b>Exchange Amount</b></td><td><b>${money(t.exchange)}</b></td></tr>
-  </table>
+  <p>
+    <b>Old Jewellery Exchange:</b>
+    ${money(t.exchange)}
+  </p>
 ` : ""}
 <h3>Total: ${money(t.total)}</h3><p>Paid: ${money(t.paid)} | Due: ${money(t.due)}</p>
   <p>Thank you · धन्यवाद</p>`;
@@ -928,6 +919,13 @@ function reprintBill(id){
         </tr>
       `).join("")}
     </table>
+
+    ${b.exchange > 0 ? `
+  <p>
+    <b>Old Jewellery Exchange:</b>
+    ${money(b.exchange)}
+  </p>
+` : ""}
 
     <h3>Total: ${money(b.total)}</h3>
     <p>Paid: ${money(b.paid)} | Due: ${money(b.due)}</p>
