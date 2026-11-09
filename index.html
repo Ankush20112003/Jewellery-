@@ -279,6 +279,75 @@ section.active {
   }
 }
 
+
+/* ===== CUSTOMER RECEIPT FLORAL DESIGN ===== */
+.receipt-frame {
+  position: relative;
+  background: #fffdf8;
+  border: 2px solid #a77b35;
+  outline: 1px solid #d8bd83;
+  outline-offset: 4px;
+  margin: 12px;
+  padding: 30px 35px;
+  min-height: 300px;
+  overflow: hidden;
+}
+
+.receipt-frame::before,
+.receipt-frame::after {
+  content: "❀  ✿  ❀  ✿  ❀  ✿  ❀";
+  display: block;
+  text-align: center;
+  color: #a77b35;
+  letter-spacing: 7px;
+  font-size: 17px;
+  padding: 5px 0;
+}
+
+.receipt-frame::after {
+  margin-top: 20px;
+}
+
+.floral-sides {
+  position: absolute;
+  top: 55px;
+  bottom: 55px;
+  left: 5px;
+  right: 5px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  color: #a77b35;
+  font-size: 17px;
+  line-height: 2;
+  opacity: 0.85;
+}
+
+.floral-sides span {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.receipt-content {
+  position: relative;
+  z-index: 1;
+  padding: 0 18px;
+}
+
+.khata-popup-box {
+  background: #f5f1e8;
+}
+
+@media print {
+  .receipt-frame {
+    margin: 12px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+
 </style>
 </head>
 <body>
@@ -516,11 +585,15 @@ section.active {
 
     <div id="khataPopupContent"></div>
 
-    <div class="khata-popup-actions no-print">
-      <button onclick="printKhataReceipt()">Print</button>
-      <button onclick="saveKhataJPG()">Save JPG</button>
-      <button onclick="shareKhataJPG()">Share JPG</button>
-    </div>
+    
+<div class="khata-popup-actions no-print">
+  <button onclick="printKhataReceipt()">Print</button>
+  <button onclick="saveKhataJPG()">Save JPG</button>
+  <button onclick="shareKhataJPG()">Share JPG</button>
+  <button onclick="saveKhataPDF()">Save PDF</button>
+  <button onclick="shareKhataPDF()">Share PDF</button>
+</div>
+
   </div>
 </div>
 
@@ -1371,24 +1444,23 @@ function openKhataEntry(paymentId) {
   let details = "";
 
   if (bill) {
+    
     const items = (bill.items || []).map((x, i) => `
       <tr>
         <td>${i + 1}. ${safe(x.name)}</td>
         <td>${safe(x.metalType)} / ${safe(x.purity)}</td>
-        <td>${Number(x.gross || 0).toFixed(3)}</td>
-        <td>${Number(x.stone || 0).toFixed(3)}</td>
-        <td>${Number(x.net || 0).toFixed(3)}</td>
-        <td>${x.tunch || 0}%</td>
+        <td>${Number(x.net || 0).toFixed(3)} gm</td>
         <td>${money(x.rate)}</td>
         <td>${money(x.total)}</td>
       </tr>
     `).join("");
 
+
     const e = bill.exchangeDetails || {};
 
+    
     details = `
       <h3>Bill Details</h3>
-
       <p><b>Bill Number:</b> ${safe(bill.id)}</p>
       <p><b>Bill Date:</b> ${safe(bill.date)}</p>
 
@@ -1397,47 +1469,32 @@ function openKhataEntry(paymentId) {
       <table class="khata-detail-table">
         <tr>
           <th>Item</th>
-          <th>Metal/Purity</th>
-          <th>Gross</th>
-          <th>Stone</th>
-          <th>Net</th>
-          <th>Tunch</th>
+          <th>Metal / Purity</th>
+          <th>Net Weight</th>
           <th>Rate</th>
           <th>Amount</th>
         </tr>
-        ${items || "<tr><td colspan='8'>No item details</td></tr>"}
+        ${items || "<tr><td colspan='5'>No item details</td></tr>"}
       </table>
       </div>
 
-      ${bill.exchangeDetails || bill.exchange > 0 ? `
-        <h3>Old Gold / Silver Exchange</h3>
-        <table class="khata-detail-table">
-          <tr><th>Detail</th><th>Value</th></tr>
-          <tr><td>Metal</td><td>${safe(e.metal || "")}</td></tr>
-          <tr><td>Old Item</td><td>${safe(e.item || "")}</td></tr>
-          <tr><td>Purity</td><td>${safe(e.purity || "")}</td></tr>
-          <tr><td>Gross Weight</td><td>${Number(e.gross || 0).toFixed(3)} gm</td></tr>
-          <tr><td>Stone Weight</td><td>${Number(e.stone || 0).toFixed(3)} gm</td></tr>
-          <tr><td>Net Weight</td><td>${Number(e.net || 0).toFixed(3)} gm</td></tr>
-          <tr><td>Tunch</td><td>${e.tunch || 0}%</td></tr>
-          <tr><td>Rate per 10 gm</td><td>${money(e.rate)}</td></tr>
-          <tr><td>Metal Value</td><td>${money(e.metalValue)}</td></tr>
-          <tr><td>Deduction</td><td>${e.deduction || 0}%</td></tr>
-          <tr><td>Deduction Amount</td><td>${money(e.deductionAmount)}</td></tr>
-          <tr><td>Exchange Amount</td><td>${money(bill.exchange)}</td></tr>
-        </table>
+      ${Number(bill.exchange || 0) > 0 ? `
+        <div class="khata-receipt-total">
+          <b>Old Gold / Silver Exchange Amount:</b>
+          <h3>${money(bill.exchange)}</h3>
+        </div>
       ` : ""}
 
       <div class="khata-receipt-total">
         <p>Subtotal: ${money(bill.subtotal)}</p>
         <p>Discount: ${money(bill.discount)}</p>
         <p>GST: ${money(bill.gst)}</p>
-        <p>Exchange: ${money(bill.exchange)}</p>
         <h3>Bill Total: ${money(bill.total)}</h3>
         <p>Initially Paid: ${money(bill.paid)}</p>
         <h3>Current Bill Due: ${money(getBillDue(bill))}</h3>
       </div>
     `;
+
   } else if (isDebit) {
     details = `
       <h3>Bill Reference</h3>
@@ -1459,38 +1516,45 @@ function openKhataEntry(paymentId) {
 
   const balanceNow = balance(c.id);
 
+  
   const html = `
-    <div id="khataReceiptPrint">
+    <div id="khataReceiptPrint" class="receipt-frame">
 
-      <div class="khata-receipt-heading">
-        <h2>MAHENDER JEWELLERS</h2>
-        <p>Titram | Kailram Wale</p>
-        <h3>Customer Khata Receipt</h3>
+      <div class="floral-sides">
+        <span>❀<br>✿<br>❀<br>✿<br>❀</span>
+        <span>❀<br>✿<br>❀<br>✿<br>❀</span>
       </div>
 
-      <h3>Customer Information</h3>
-      <p><b>Name:</b> ${safe(c.name)}</p>
-      <p><b>Mobile:</b> ${safe(c.mobile || "")}</p>
-      <p><b>Address:</b> ${safe(c.address || "")}</p>
+      <div class="receipt-content">
+        <div class="khata-receipt-heading">
+          <h2>MAHENDER JEWELLERS</h2>
+          <p>Titram | Kailram Wale</p>
+          <h3>Customer Receipt</h3>
+        </div>
 
-      <hr>
+        <h3>Customer Information</h3>
+        <p><b>Name:</b> ${safe(c.name)}</p>
+        <p><b>Mobile:</b> ${safe(c.mobile || "")}</p>
+        <p><b>Address:</b> ${safe(c.address || "")}</p>
 
-      <h3>Transaction Information</h3>
-      <p><b>Date:</b> ${safe(p.date || "")}</p>
-      <p><b>Details:</b> ${safe(p.note || "")}</p>
-      <p><b>Transaction ID:</b> ${safe(p.id || "")}</p>
-      <p><b>Type:</b> ${isDebit ? "Debit / Bill Due" : "Credit / Payment Received"}</p>
-      <p><b>Amount:</b> ${money(amount)}</p>
+        <hr>
 
-      ${details}
+        <h3>Transaction Information</h3>
+        <p><b>Date:</b> ${safe(p.date || "")}</p>
+        <p><b>Details:</b> ${safe(p.note || "")}</p>
+        <p><b>Type:</b> ${isDebit ? "Bill / Debit" : "Payment Received"}</p>
+        <p><b>Amount:</b> ${money(amount)}</p>
 
-      <div class="khata-receipt-total">
-        <h3>Customer Current Khata Balance: ${money(balanceNow)}</h3>
-        <p>Thank you · धन्यवाद</p>
+        ${details}
+
+        <div class="khata-receipt-total">
+          <h3>Customer Current Khata Balance: ${money(balanceNow)}</h3>
+          <p>Thank you · धन्यवाद</p>
+        </div>
       </div>
-
     </div>
   `;
+
 
   currentKhataReceipt = {
     html,
@@ -1515,6 +1579,7 @@ function printKhataReceipt() {
   window.print();
 }
 
+
 async function makeKhataReceiptImage() {
   if (!currentKhataReceipt) {
     alert("Pehle receipt open karein");
@@ -1523,35 +1588,32 @@ async function makeKhataReceiptImage() {
 
   const element = $("khataReceiptPrint");
 
-  const canvas = await html2canvas(element, {
+  return await html2canvas(element, {
     scale: 2,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fffdf8",
     useCORS: true
-  });
-
-  return new Promise(resolve => {
-    canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.95);
   });
 }
 
 async function saveKhataJPG() {
   try {
-    const blob = await makeKhataReceiptImage();
-    if (!blob) return;
+    const canvas = await makeKhataReceiptImage();
+    if (!canvas) return;
+
+    const blob = await new Promise(resolve =>
+      canvas.toBlob(resolve, "image/jpeg", 0.95)
+    );
+
+    if (!blob) throw new Error("Image create nahi hui");
 
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
 
     link.href = url;
-    link.download =
-      "Khata-" +
-      currentKhataReceipt.customer.replace(/[^a-z0-9]/gi, "-") +
-      "-" + currentKhataReceipt.date + ".jpg";
+    link.download = "Mahender-Jewellers-Receipt-" +
+      currentKhataReceipt.date + ".jpg";
 
-    document.body.appendChild(link);
     link.click();
-    link.remove();
-
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 
   } catch (error) {
@@ -1561,12 +1623,18 @@ async function saveKhataJPG() {
 
 async function shareKhataJPG() {
   try {
-    const blob = await makeKhataReceiptImage();
-    if (!blob) return;
+    const canvas = await makeKhataReceiptImage();
+    if (!canvas) return;
+
+    const blob = await new Promise(resolve =>
+      canvas.toBlob(resolve, "image/jpeg", 0.95)
+    );
+
+    if (!blob) throw new Error("Image create nahi hui");
 
     const file = new File(
       [blob],
-      "Khata-Receipt-" + currentKhataReceipt.id + ".jpg",
+      "Mahender-Jewellers-Receipt.jpg",
       { type: "image/jpeg" }
     );
 
@@ -1577,20 +1645,114 @@ async function shareKhataJPG() {
     ) {
       await navigator.share({
         title: "Mahender Jewellers Receipt",
-        text: "Customer Khata Receipt",
         files: [file]
       });
     } else {
       await saveKhataJPG();
-      alert("Is device par direct JPG sharing available nahi hai. JPG download ho gayi hai; ise WhatsApp par share kar sakte hain.");
+      alert("Direct sharing available nahi hai. JPG download kar di gayi hai.");
     }
 
   } catch (error) {
     if (error.name !== "AbortError") {
-      alert("Share Error: " + error.message);
+      alert("JPG Share Error: " + error.message);
     }
   }
 }
+
+// ===== PDF RECEIPT =====
+async function createKhataPDF() {
+  const canvas = await makeKhataReceiptImage();
+  if (!canvas) return null;
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    throw new Error("PDF library load nahi hui");
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("p", "mm", "a4");
+
+  const image = canvas.toDataURL("image/jpeg", 0.95);
+
+  // All-side margin: 15 mm
+  const margin = 15;
+  const pageWidth = 210;
+  const pageHeight = 297;
+
+  const maxWidth = pageWidth - margin * 2;
+  const maxHeight = pageHeight - margin * 2;
+
+  const ratio = Math.min(
+    maxWidth / canvas.width,
+    maxHeight / canvas.height
+  );
+
+  const width = canvas.width * ratio;
+  const height = canvas.height * ratio;
+
+  const x = (pageWidth - width) / 2;
+  const y = margin;
+
+  doc.addImage(
+    image,
+    "JPEG",
+    x,
+    y,
+    width,
+    height
+  );
+
+  return doc;
+}
+
+async function saveKhataPDF() {
+  try {
+    const doc = await createKhataPDF();
+    if (!doc) return;
+
+    doc.save(
+      "Mahender-Jewellers-Receipt-" +
+      currentKhataReceipt.date + ".pdf"
+    );
+
+  } catch (error) {
+    alert("PDF Save Error: " + error.message);
+  }
+}
+
+async function shareKhataPDF() {
+  try {
+    const doc = await createKhataPDF();
+    if (!doc) return;
+
+    const blob = doc.output("blob");
+
+    const file = new File(
+      [blob],
+      "Mahender-Jewellers-Receipt.pdf",
+      { type: "application/pdf" }
+    );
+
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      await navigator.share({
+        title: "Mahender Jewellers PDF Receipt",
+        files: [file]
+      });
+    } else {
+      doc.save("Mahender-Jewellers-Receipt.pdf");
+      alert("Direct PDF sharing available nahi hai. PDF download kar di gayi hai.");
+    }
+
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      alert("PDF Share Error: " + error.message);
+    }
+  }
+}
+
 
 
 function receivePayment() {
