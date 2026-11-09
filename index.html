@@ -409,6 +409,37 @@ section.active {
   <input id="billNo" readonly>
 </div></div>
 <h3>Jewellery Items</h3>
+
+<div class="card">
+  <h3>Metal Rates (Per 10 Gram)</h3>
+
+  <div class="grid">
+    <div>
+      <label>Gold Rate ₹</label>
+      <input
+        id="goldRate"
+        type="number"
+        min="0"
+        placeholder="Gold rate (optional)"
+        oninput="updateMetalRates('Gold')">
+    </div>
+
+    <div>
+      <label>Silver Rate ₹</label>
+      <input
+        id="silverRate"
+        type="number"
+        min="0"
+        placeholder="Silver rate (optional)"
+        oninput="updateMetalRates('Silver')">
+    </div>
+  </div>
+
+  <p class="small">
+    जिस metal का item नहीं होगा, उसका rate blank छोड़ सकते हैं।
+  </p>
+</div>
+
 <div id="items"></div>
 <button onclick="addItem()">+ Add Item</button>
 <div class="grid">
@@ -418,7 +449,7 @@ section.active {
   <h3>Old Gold / Silver Exchange</h3>
 
   <label>Metal</label>
-  <select id="exchangeMetal" onchange="calculate()">
+  <select id="exchangeMetal" onchange="updateExchangeRate()">
     <option value="Gold">Gold</option>
     <option value="Silver">Silver</option>
   </select>
@@ -458,7 +489,7 @@ section.active {
     <div>
       <label>Rate per 10 gm ₹</label>
       <input id="exchangeRate" type="number"
-        value="0" oninput="calculate()">
+        value="0" readonly>
     </div>
 
     <div>
@@ -529,22 +560,6 @@ section.active {
   <option>Card</option>
   <option>Bank</option>
 </select>
-<button onclick="receivePayment()">Save Payment</button>
-</div>
-</section>
-
-<div class="card">
-<h2>Customer Khata</h2>
-<label>Select Customer</label><select id="khataCustomer" onchange="renderKhata()"></select>
-<div id="khataRows"></div>
-</div>
-<div class="card">
-<h3>Receive Payment</h3>
-<label>Customer</label><select id="paymentCustomer"></select>
-<label>Amount ₹</label><input id="paymentAmount" type="number">
-<label>Date</label><input id="paymentDate" type="date">
-<label>Payment Mode</label>
-<select id="paymentMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank</option></select>
 <button onclick="receivePayment()">Save Payment</button>
 </div>
 </section>
@@ -645,7 +660,11 @@ let db = {
   customers: [],
   bills: [],
   payments: [],
-  cash: []
+  cash: [],
+  settings: {
+    goldRate: 0,
+    silverRate: 0
+  }
 };
 
 let itemCount = 0;
@@ -817,30 +836,141 @@ function show(id) {
 
   render();
 }
+function getMetalRate(metal) {
+  return Number(
+    $(metal === "Gold" ? "goldRate" : "silverRate").value || 0
+  );
+}
 
+function updateMetalRates(metal) {
+  const rate = getMetalRate(metal);
 
-function addItem(){
-  const id=++itemCount;
-  const div=document.createElement("div");
-  div.className="item";
-  div.innerHTML=`
-  <b>Item ${id}</b>
-  <div class="grid">
-  <div><label>Metal</label><select class="metal"><option>Gold</option><option>Silver</option></select></div>
-  <div><label>Item Name</label><input class="name" placeholder="Ring, Chain"></div>
-  <div><label>Purity</label><select class="purity"><option>24K</option><option selected>22K</option><option>18K</option><option>14K</option><option>925 Silver</option><option>999 Silver</option></select></div>
-  <div><label>Gross Weight gm</label><input class="gross" type="number" step=".001" value="0"></div>
-  <div><label>Stone Weight gm</label><input class="stone" type="number" step=".001" value="0"></div>
-  <div><label>Rate per 10 gm ₹</label><input class="rate" type="number" value="0"></div>
-  <div><label>Tunch %</label><input class="tunch" type="number" value="100"></div>
-  <div><label>Labour ₹</label><input class="labour" type="number" value="0"></div>
-  <div><label>Labour Type</label><select class="labourType"><option value="fixed">Fixed</option><option value="gram">Per Gram</option><option value="percent">% of Metal Value</option></select></div>
-  <div><label>Wastage %</label><input class="wastage" type="number" value="0"></div>
-  <div><label>Other Charges ₹</label><input class="other" type="number" value="0"></div>
-  </div>
-  <button class="no-print" onclick="this.parentElement.remove();calculate()">Remove Item</button>`;
+  // Selected metal ke sabhi current items update honge
+  document.querySelectorAll("#items .item").forEach(el => {
+    const itemMetal = el.querySelector(".metal").value;
+
+    if (itemMetal === metal) {
+      el.querySelector(".rate").value = rate || 0;
+    }
+  });
+
+  // Exchange ka rate bhi selected metal ke hisab se update hoga
+  if ($("exchangeMetal").value === metal) {
+    $("exchangeRate").value = rate || 0;
+  }
+
+  calculate();
+}
+
+function updateExchangeRate() {
+  const metal = $("exchangeMetal").value;
+  $("exchangeRate").value = getMetalRate(metal) || 0;
+  calculate();
+}
+
+function addItem() {
+  const id = ++itemCount;
+  const div = document.createElement("div");
+
+  div.className = "item";
+
+  div.innerHTML = `
+    <b>Item ${id}</b>
+
+    <div class="grid">
+      <div>
+        <label>Metal</label>
+        <select class="metal">
+          <option value="Gold">Gold</option>
+          <option value="Silver">Silver</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Item Name</label>
+        <input class="name" placeholder="Ring, Chain">
+      </div>
+
+      <div>
+        <label>Purity</label>
+        <select class="purity">
+          <option>24K</option>
+          <option selected>22K</option>
+          <option>18K</option>
+          <option>14K</option>
+          <option>925 Silver</option>
+          <option>999 Silver</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Gross Weight gm</label>
+        <input class="gross" type="number" step=".001" value="0">
+      </div>
+
+      <div>
+        <label>Stone Weight gm</label>
+        <input class="stone" type="number" step=".001" value="0">
+      </div>
+
+      <div>
+        <label>Rate per 10 gm ₹</label>
+        <input class="rate" type="number" value="0" readonly>
+      </div>
+
+      <div>
+        <label>Tunch %</label>
+        <input class="tunch" type="number" value="100">
+      </div>
+
+      <div>
+        <label>Labour ₹</label>
+        <input class="labour" type="number" value="0">
+      </div>
+
+      <div>
+        <label>Labour Type</label>
+        <select class="labourType">
+          <option value="fixed">Fixed</option>
+          <option value="gram">Per Gram</option>
+          <option value="percent">% of Metal Value</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Wastage %</label>
+        <input class="wastage" type="number" value="0">
+      </div>
+
+      <div>
+        <label>Other Charges ₹</label>
+        <input class="other" type="number" value="0">
+      </div>
+    </div>
+
+    <button class="no-print"
+      onclick="this.parentElement.remove();calculate()">
+      Remove Item
+    </button>
+  `;
+
   $("items").appendChild(div);
-  div.querySelectorAll("input,select").forEach(x=>x.addEventListener("input",calculate));
+
+  // Item metal change hone par us metal ka rate aaye
+  div.querySelector(".metal").addEventListener("change", function() {
+    const metal = this.value;
+    div.querySelector(".rate").value = getMetalRate(metal) || 0;
+    calculate();
+  });
+
+  div.querySelectorAll("input,select").forEach(x => {
+    x.addEventListener("input", calculate);
+  });
+
+  // Naye item mein selected metal ka saved rate lagao
+  const metal = div.querySelector(".metal").value;
+  div.querySelector(".rate").value = getMetalRate(metal) || 0;
+
   calculate();
 }
 function getItems(){
@@ -1051,8 +1181,21 @@ function saveBill(){
   if(t.paid > t.total)
     return alert("Paid amount total se zyada nahi ho sakta");
 
-  if(!t.items.length || !t.items.some(x=>x.name && x.gross>0 && x.rate>0))
-    return alert("Item details complete karein");
+  const usedItems = t.items.filter(x =>
+  x.name.trim() && x.gross > 0
+);
+
+if (!usedItems.length) {
+  return alert("Kam se kam ek item ki details complete karein");
+}
+
+if (usedItems.some(x => x.rate <= 0)) {
+  return alert("Jis metal ka item hai, pehle uska rate enter karein");
+}
+
+if (t.exchangeDetails.gross > 0 && t.exchangeDetails.rate <= 0) {
+  return alert("Exchange metal ka rate enter karein");
+}
 
   const billNo=$("billNo").value.trim();
   if(!billNo) return alert("Bill number required");
@@ -1072,14 +1215,20 @@ function saveBill(){
 
   const c=findOrCreateCustomer(name,$("mobile").value.trim());
 
-  const bill={
-    id:billNo,
-    date:$("billDate").value,
-    customerId:c.id,
-    customer:name,
-    mobile:c.mobile,
-    ...t
-  };
+  const bill = {
+  id: billNo,
+  date: $("billDate").value,
+  customerId: c.id,
+  customer: name,
+  mobile: c.mobile,
+
+  rates: {
+    goldRate: getMetalRate("Gold"),
+    silverRate: getMetalRate("Silver")
+  },
+
+  ...t
+};
 
   if(oldBill){
     // Purane bill ki automatic ledger entries hatao
@@ -1852,6 +2001,24 @@ function editBill(id){
 
   $("discount").value=b.discount||0;
   $("gst").value=b.gst ? (b.gst/(Math.max(0,b.subtotal-b.discount)||1))*100 : 0;
+  // Is bill ke original rates restore karo
+const oldItems = b.items || [];
+const oldExchange = b.exchangeDetails || {};
+
+const oldGoldRate =
+  b.rates?.goldRate ||
+  oldItems.find(x => x.metalType === "Gold")?.rate ||
+  (oldExchange.metal === "Gold" ? oldExchange.rate : 0) ||
+  0;
+
+const oldSilverRate =
+  b.rates?.silverRate ||
+  oldItems.find(x => x.metalType === "Silver")?.rate ||
+  (oldExchange.metal === "Silver" ? oldExchange.rate : 0) ||
+  0;
+
+$("goldRate").value = oldGoldRate || "";
+$("silverRate").value = oldSilverRate || "";
   // Restore old jewellery exchange details
 const e = b.exchangeDetails || {};
 
