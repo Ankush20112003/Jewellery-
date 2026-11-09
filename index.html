@@ -82,8 +82,25 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 <div class="card no-print">
 <h2>New Jewellery Bill</h2>
 <div class="grid">
-<div><label>Customer Name</label><input id="customer" list="customerList"><datalist id="customerList"></datalist></div>
-<div><label>Mobile Number</label><input id="mobile"></div>
+<div>
+  <label>Customer Name</label>
+  <input
+    id="customer"
+    list="customerList"
+    placeholder="Select or enter new customer"
+    onchange="selectBillCustomer()"
+    onblur="saveBillCustomer()">
+  <datalist id="customerList"></datalist>
+</div>
+
+<div>
+  <label>Mobile Number</label>
+  <input
+    id="mobile"
+    type="tel"
+    placeholder="Enter mobile number"
+    onblur="saveBillCustomer()">
+</div>
 <div><label>Bill Date</label><input id="billDate" type="date"></div>
 <div><label>Bill Number</label><input id="billNo"></div>
 </div>
@@ -440,10 +457,65 @@ function calculate(){
   Paid: ${money(t.paid)}<br>
   Due: <b>${money(t.due)}</b>`;
 }
-function findOrCreateCustomer(name,mobile){
-  let c=db.customers.find(x=>x.name.toLowerCase()===name.toLowerCase() && x.mobile===mobile);
-  if(!c){c={id:"C"+Date.now(),name,mobile,address:""};db.customers.push(c);}
+// Find or create customer
+function findOrCreateCustomer(name, mobile) {
+  let c = db.customers.find(x =>
+    x.name.toLowerCase() === name.toLowerCase()
+  );
+
+  if (!c) {
+    c = {
+      id: "C" + Date.now(),
+      name: name,
+      mobile: mobile,
+      address: ""
+    };
+    db.customers.push(c);
+  } else {
+    c.mobile = mobile || c.mobile || "";
+  }
+
   return c;
+}
+
+// Select existing customer
+function selectBillCustomer() {
+  const name = $("customer").value.trim();
+
+  const customer = db.customers.find(c =>
+    c.name.toLowerCase() === name.toLowerCase()
+  );
+
+  if (customer) {
+    $("mobile").value = customer.mobile || "";
+  }
+}
+
+// Automatically save customer
+function saveBillCustomer() {
+  const name = $("customer").value.trim();
+  const mobile = $("mobile").value.trim();
+
+  if (!name) return;
+
+  let customer = db.customers.find(c =>
+    c.name.toLowerCase() === name.toLowerCase()
+  );
+
+  if (customer) {
+    customer.mobile = mobile || customer.mobile || "";
+  } else {
+    customer = {
+      id: "C" + Date.now(),
+      name: name,
+      mobile: mobile,
+      address: ""
+    };
+
+    db.customers.push(customer);
+  }
+
+  persist();
 }
 function saveBill(){
   const name=$("customer").value.trim();
