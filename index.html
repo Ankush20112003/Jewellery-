@@ -246,11 +246,11 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 <!-- 2. Excel Backup Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!-- 3. PDF Main Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<!-- PDF Main Library -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
-<!-- 4. PDF Table Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+<!-- PDF Table Plugin -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 
 <!-- 5. Firebase App -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -260,12 +260,6 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 
 <!-- 7. Firebase Firestore Database -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
-<!-- 8. Your Main Application JavaScript -->
-<script>
-  // Yahan aapka existing JavaScript code rahega
-</script>
-
   
 <script>
 // STEP: Replace these values with your Firebase Web App config.
@@ -1165,7 +1159,7 @@ function backup() {
 
 function backupPDF() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert("PDF library load nahi hui. Page refresh karke try karein.");
+    alert("jsPDF load nahi hui. Internet connection check karein.");
     return;
   }
 
@@ -1177,7 +1171,7 @@ function backupPDF() {
   });
 
   if (typeof doc.autoTable !== "function") {
-    alert("PDF Table library load nahi hui. Page refresh karein.");
+    alert("AutoTable plugin load nahi hua.");
     return;
   }
 
