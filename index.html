@@ -146,7 +146,140 @@ section.active {
     border: none;
     box-shadow: none;
   }
-}</style>
+}
+
+/* ===== CUSTOMER KHATA POPUP ===== */
+.khata-popup {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.65);
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.khata-popup.open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: popupFade 0.25s ease;
+}
+
+.khata-popup-box {
+  background: white;
+  color: #302514;
+  width: 100%;
+  max-width: 750px;
+  padding: 20px;
+  border-radius: 12px;
+  max-height: 92vh;
+  overflow-y: auto;
+  animation: popupSlide 0.3s ease;
+}
+
+.khata-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #d7c9ae;
+  padding-bottom: 12px;
+  margin-bottom: 15px;
+}
+
+.khata-popup-header h2 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.khata-popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  border-top: 1px solid #ddd;
+  padding-top: 15px;
+}
+
+.khata-popup-actions button {
+  flex: 1;
+  min-width: 100px;
+}
+
+.khata-detail-table {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.khata-detail-table th {
+  background: #f5ead3;
+}
+
+.khata-receipt-heading {
+  text-align: center;
+  border-bottom: 1px dashed #999;
+  padding-bottom: 12px;
+}
+
+.khata-receipt-total {
+  background: #f5ead3;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 15px;
+}
+
+@keyframes popupFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popupSlide {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Print only the receipt popup */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #khataPopup,
+  #khataPopup * {
+    visibility: visible !important;
+  }
+
+  #khataPopup {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  .khata-popup-box {
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  .khata-popup-actions,
+  .khata-popup-header button {
+    display: none !important;
+  }
+}
+
+</style>
 </head>
 <body>
 <header>
@@ -372,6 +505,25 @@ section.active {
 </section>
 </main>
 </div>
+
+<!-- CUSTOMER KHATA TRANSACTION POPUP -->
+<div id="khataPopup" class="khata-popup">
+  <div class="khata-popup-box">
+    <div class="khata-popup-header">
+      <h2 id="popupTitle">Customer Receipt</h2>
+      <button onclick="closeKhataPopup()">✕ Close</button>
+    </div>
+
+    <div id="khataPopupContent"></div>
+
+    <div class="khata-popup-actions no-print">
+      <button onclick="printKhataReceipt()">Print</button>
+      <button onclick="saveKhataJPG()">Save JPG</button>
+      <button onclick="shareKhataJPG()">Share JPG</button>
+    </div>
+  </div>
+</div>
+
 <!-- 1. HTML to Image Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -1127,6 +1279,7 @@ function searchKhataCustomer() {
 
   
   
+
 function renderKhata() {
   const id = $("khataCustomer").value;
   const c = db.customers.find(x => x.id === id);
@@ -1136,11 +1289,20 @@ function renderKhata() {
     return;
   }
 
-  const ps = db.payments.filter(p => p.customerId === id);
+  const ps = db.payments
+    .filter(p => p.customerId === id)
+    .sort((a, b) =>
+      String(a.date || "").localeCompare(String(b.date || ""))
+    );
 
   $("khataRows").innerHTML = `
     <h3>${safe(c.name)} | Balance ${money(balance(id))}</h3>
 
+    <p class="small">
+      Kisi bhi transaction ki row par click karke complete receipt dekhein.
+    </p>
+
+    <div style="overflow-x:auto">
     <table>
       <tr>
         <th>Date</th>
@@ -1150,16 +1312,287 @@ function renderKhata() {
       </tr>
 
       ${ps.map(p => `
-        <tr>
+        <tr
+          onclick="openKhataEntry('${safe(p.id)}')"
+          style="cursor:pointer"
+          title="Click to view complete details">
+
           <td>${safe(p.date || "")}</td>
-          <td>${safe(p.note || "Payment")}</td>
-          <td>${p.type === "debit" ? money(p.amount) : "-"}</td>
-          <td>${p.type === "credit" ? money(p.amount) : "-"}</td>
+
+          <td>
+            <b>${safe(p.note || "Payment")}</b>
+            <span class="small"> · View Details</span>
+          </td>
+
+          <td style="color:#a83232">
+            ${p.type === "debit" ? money(p.amount) : "-"}
+          </td>
+
+          <td style="color:#18723c">
+            ${p.type === "credit" ? money(p.amount) : "-"}
+          </td>
         </tr>
       `).join("")}
     </table>
+    </div>
   `;
 }
+
+
+let currentKhataReceipt = null;
+
+function openKhataEntry(paymentId) {
+  const p = db.payments.find(x => x.id === paymentId);
+
+  if (!p) {
+    return alert("Transaction nahi mili");
+  }
+
+  const c = db.customers.find(x => x.id === p.customerId);
+
+  if (!c) {
+    return alert("Customer nahi mila");
+  }
+
+  const isDebit = p.type === "debit";
+  const billId = isDebit
+    ? String(p.note || "").replace(/^Bill /, "")
+    : "";
+
+  const bill = isDebit
+    ? db.bills.find(b =>
+        String(b.id) === billId &&
+        b.customerId === p.customerId
+      )
+    : null;
+
+  const amount = Number(p.amount || 0);
+
+  let details = "";
+
+  if (bill) {
+    const items = (bill.items || []).map((x, i) => `
+      <tr>
+        <td>${i + 1}. ${safe(x.name)}</td>
+        <td>${safe(x.metalType)} / ${safe(x.purity)}</td>
+        <td>${Number(x.gross || 0).toFixed(3)}</td>
+        <td>${Number(x.stone || 0).toFixed(3)}</td>
+        <td>${Number(x.net || 0).toFixed(3)}</td>
+        <td>${x.tunch || 0}%</td>
+        <td>${money(x.rate)}</td>
+        <td>${money(x.total)}</td>
+      </tr>
+    `).join("");
+
+    const e = bill.exchangeDetails || {};
+
+    details = `
+      <h3>Bill Details</h3>
+
+      <p><b>Bill Number:</b> ${safe(bill.id)}</p>
+      <p><b>Bill Date:</b> ${safe(bill.date)}</p>
+
+      <h3>Jewellery Items</h3>
+      <div style="overflow-x:auto">
+      <table class="khata-detail-table">
+        <tr>
+          <th>Item</th>
+          <th>Metal/Purity</th>
+          <th>Gross</th>
+          <th>Stone</th>
+          <th>Net</th>
+          <th>Tunch</th>
+          <th>Rate</th>
+          <th>Amount</th>
+        </tr>
+        ${items || "<tr><td colspan='8'>No item details</td></tr>"}
+      </table>
+      </div>
+
+      ${bill.exchangeDetails || bill.exchange > 0 ? `
+        <h3>Old Gold / Silver Exchange</h3>
+        <table class="khata-detail-table">
+          <tr><th>Detail</th><th>Value</th></tr>
+          <tr><td>Metal</td><td>${safe(e.metal || "")}</td></tr>
+          <tr><td>Old Item</td><td>${safe(e.item || "")}</td></tr>
+          <tr><td>Purity</td><td>${safe(e.purity || "")}</td></tr>
+          <tr><td>Gross Weight</td><td>${Number(e.gross || 0).toFixed(3)} gm</td></tr>
+          <tr><td>Stone Weight</td><td>${Number(e.stone || 0).toFixed(3)} gm</td></tr>
+          <tr><td>Net Weight</td><td>${Number(e.net || 0).toFixed(3)} gm</td></tr>
+          <tr><td>Tunch</td><td>${e.tunch || 0}%</td></tr>
+          <tr><td>Rate per 10 gm</td><td>${money(e.rate)}</td></tr>
+          <tr><td>Metal Value</td><td>${money(e.metalValue)}</td></tr>
+          <tr><td>Deduction</td><td>${e.deduction || 0}%</td></tr>
+          <tr><td>Deduction Amount</td><td>${money(e.deductionAmount)}</td></tr>
+          <tr><td>Exchange Amount</td><td>${money(bill.exchange)}</td></tr>
+        </table>
+      ` : ""}
+
+      <div class="khata-receipt-total">
+        <p>Subtotal: ${money(bill.subtotal)}</p>
+        <p>Discount: ${money(bill.discount)}</p>
+        <p>GST: ${money(bill.gst)}</p>
+        <p>Exchange: ${money(bill.exchange)}</p>
+        <h3>Bill Total: ${money(bill.total)}</h3>
+        <p>Initially Paid: ${money(bill.paid)}</p>
+        <h3>Current Bill Due: ${money(getBillDue(bill))}</h3>
+      </div>
+    `;
+  } else if (isDebit) {
+    details = `
+      <h3>Bill Reference</h3>
+      <p>${safe(p.note || "Bill debit entry")}</p>
+      <p>Is purani entry ke saath complete bill record nahi mila.</p>
+    `;
+  } else {
+    details = `
+      <h3>Payment Receipt</h3>
+      <div class="khata-receipt-total">
+        <h2>${money(amount)}</h2>
+        <p><b>Payment Mode:</b> ${safe(p.paymentMode || "Old record / Not available")}</p>
+        <p><b>Payment Details:</b> ${safe(p.note || "Payment received")}</p>
+        <p><b>Transaction Date:</b> ${safe(p.date || "")}</p>
+        <p><b>Receipt ID:</b> ${safe(p.id || "")}</p>
+      </div>
+    `;
+  }
+
+  const balanceNow = balance(c.id);
+
+  const html = `
+    <div id="khataReceiptPrint">
+
+      <div class="khata-receipt-heading">
+        <h2>MAHENDER JEWELLERS</h2>
+        <p>Titram | Kailram Wale</p>
+        <h3>Customer Khata Receipt</h3>
+      </div>
+
+      <h3>Customer Information</h3>
+      <p><b>Name:</b> ${safe(c.name)}</p>
+      <p><b>Mobile:</b> ${safe(c.mobile || "")}</p>
+      <p><b>Address:</b> ${safe(c.address || "")}</p>
+
+      <hr>
+
+      <h3>Transaction Information</h3>
+      <p><b>Date:</b> ${safe(p.date || "")}</p>
+      <p><b>Details:</b> ${safe(p.note || "")}</p>
+      <p><b>Transaction ID:</b> ${safe(p.id || "")}</p>
+      <p><b>Type:</b> ${isDebit ? "Debit / Bill Due" : "Credit / Payment Received"}</p>
+      <p><b>Amount:</b> ${money(amount)}</p>
+
+      ${details}
+
+      <div class="khata-receipt-total">
+        <h3>Customer Current Khata Balance: ${money(balanceNow)}</h3>
+        <p>Thank you · धन्यवाद</p>
+      </div>
+
+    </div>
+  `;
+
+  currentKhataReceipt = {
+    html,
+    customer: c.name,
+    date: p.date || today(),
+    id: p.id || "Receipt"
+  };
+
+  $("popupTitle").textContent =
+    isDebit ? "Bill / Debit Details" : "Payment Receipt";
+
+  $("khataPopupContent").innerHTML = html;
+  $("khataPopup").classList.add("open");
+}
+
+function closeKhataPopup() {
+  $("khataPopup").classList.remove("open");
+}
+
+function printKhataReceipt() {
+  if (!currentKhataReceipt) return;
+  window.print();
+}
+
+async function makeKhataReceiptImage() {
+  if (!currentKhataReceipt) {
+    alert("Pehle receipt open karein");
+    return null;
+  }
+
+  const element = $("khataReceiptPrint");
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    backgroundColor: "#ffffff",
+    useCORS: true
+  });
+
+  return new Promise(resolve => {
+    canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.95);
+  });
+}
+
+async function saveKhataJPG() {
+  try {
+    const blob = await makeKhataReceiptImage();
+    if (!blob) return;
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download =
+      "Khata-" +
+      currentKhataReceipt.customer.replace(/[^a-z0-9]/gi, "-") +
+      "-" + currentKhataReceipt.date + ".jpg";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+  } catch (error) {
+    alert("JPG Save Error: " + error.message);
+  }
+}
+
+async function shareKhataJPG() {
+  try {
+    const blob = await makeKhataReceiptImage();
+    if (!blob) return;
+
+    const file = new File(
+      [blob],
+      "Khata-Receipt-" + currentKhataReceipt.id + ".jpg",
+      { type: "image/jpeg" }
+    );
+
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      await navigator.share({
+        title: "Mahender Jewellers Receipt",
+        text: "Customer Khata Receipt",
+        files: [file]
+      });
+    } else {
+      await saveKhataJPG();
+      alert("Is device par direct JPG sharing available nahi hai. JPG download ho gayi hai; ise WhatsApp par share kar sakte hain.");
+    }
+
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      alert("Share Error: " + error.message);
+    }
+  }
+}
+
+
 function receivePayment() {
   const id = $("paymentCustomer").value;
   const amount = Number($("paymentAmount").value);
@@ -1178,7 +1611,8 @@ function receivePayment() {
     date,
     type: "credit",
     amount,
-    note: "Payment received"
+    note: "Payment received (" + $("paymentMode").value + ")",
+    paymentMode: $("paymentMode").value
   });
 
   db.cash.push({
