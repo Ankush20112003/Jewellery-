@@ -743,16 +743,20 @@ auth.onAuthStateChanged(async user => {
     const initial = await cloudRef.get();
 
     if (!initial.exists) {
-      await cloudRef.set({
-        db: {
-          customers: [],
-          bills: [],
-          payments: [],
-          cash: []
-        },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    }
+  await cloudRef.set({
+    db: {
+      customers: [],
+      bills: [],
+      payments: [],
+      cash: [],
+      settings: {
+        goldRate: 0,
+        silverRate: 0
+      }
+    },
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
 
     cloudReady = true;
 
@@ -763,11 +767,15 @@ auth.onAuthStateChanged(async user => {
 
       if (data.db) {
         db = {
-          customers: data.db.customers || [],
-          bills: data.db.bills || [],
-          payments: data.db.payments || [],
-          cash: data.db.cash || []
-        };
+  customers: data.db.customers || [],
+  bills: data.db.bills || [],
+  payments: data.db.payments || [],
+  cash: data.db.cash || [],
+  settings: data.db.settings || {
+    goldRate: 0,
+    silverRate: 0
+  }
+};
 
         localStorage.setItem(
           "mahenderBackup",
