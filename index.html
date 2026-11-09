@@ -122,31 +122,6 @@ section.active {
 }
 
 @media(max-width:550px){.grid{grid-template-columns:1fr}}
-@media print {
-  body {
-    background: white;
-  }
-
-  header,
-  nav,
-  .no-print {
-    display: none !important;
-  }
-
-  section {
-    display: none !important;
-  }
-
-  section#billing {
-    display: block !important;
-  }
-
-  #billView {
-    display: block !important;
-    border: none;
-    box-shadow: none;
-  }
-}
 
 /* ===== CUSTOMER KHATA POPUP ===== */
 .khata-popup {
@@ -245,41 +220,6 @@ section.active {
   }
 }
 
-/* Print only the receipt popup */
-@media print {
-  body * {
-    visibility: hidden !important;
-  }
-
-  #khataPopup,
-  #khataPopup * {
-    visibility: visible !important;
-  }
-
-  #khataPopup {
-    display: block !important;
-    position: absolute !important;
-    inset: 0 !important;
-    padding: 0 !important;
-    background: white !important;
-    overflow: visible !important;
-  }
-
-  .khata-popup-box {
-    max-width: 100% !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-  }
-
-  .khata-popup-actions,
-  .khata-popup-header button {
-    display: none !important;
-  }
-}
-
-
 /* ===== CUSTOMER RECEIPT FLORAL DESIGN ===== */
 .receipt-frame {
   position: relative;
@@ -340,14 +280,79 @@ section.active {
 }
 
 @media print {
+  body {
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* BILL PRINT */
+  body.print-bill #billView,
+  body.print-bill #billView * {
+    visibility: visible !important;
+  }
+
+  body.print-bill header,
+  body.print-bill nav,
+  body.print-bill #login,
+  body.print-bill .no-print {
+    display: none !important;
+  }
+
+  body.print-bill #app,
+  body.print-bill main,
+  body.print-bill #billing,
+  body.print-bill #billView {
+    display: block !important;
+  }
+
+  body.print-bill #billView {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* KHATA RECEIPT PRINT */
+  body.print-khata #khataPopup,
+  body.print-khata #khataPopup * {
+    visibility: visible !important;
+  }
+
+  body.print-khata #khataPopup {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  body.print-khata .khata-popup-box {
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  body.print-khata .khata-popup-actions,
+  body.print-khata .khata-popup-header button {
+    display: none !important;
+  }
+
   .receipt-frame {
-    margin: 12px;
+    margin: 0 !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 }
-
-
+  
 </style>
 </head>
 <body>
@@ -1289,6 +1294,23 @@ if (t.exchangeDetails.gross > 0 && t.exchangeDetails.rate <= 0) {
 
   $("billNo").value = getNextBillNumber();
 }
+
+function beginBillPrint() {
+  document.body.classList.remove("print-khata");
+  document.body.classList.add("print-bill");
+  setTimeout(() => window.print(), 300);
+}
+
+function beginKhataPrint() {
+  document.body.classList.remove("print-bill");
+  document.body.classList.add("print-khata");
+  setTimeout(() => window.print(), 300);
+}
+
+window.addEventListener("afterprint", () => {
+  document.body.classList.remove("print-bill", "print-khata");
+});
+  
 function printBill(){
   const t=totals();
   const name=$("customer").value;
@@ -1306,7 +1328,7 @@ function printBill(){
 ` : ""}
 <h3>Total: ${money(t.total)}</h3><p>Paid: ${money(t.paid)} | Due: ${money(t.due)}</p>
   <p>Thank you · धन्यवाद</p>`;
-  window.print();
+  beginBillPrint();
 }
 function addCustomer() {
   const name = $("newName").value.trim();
@@ -1733,7 +1755,7 @@ function closeKhataPopup() {
 
 function printKhataReceipt() {
   if (!currentKhataReceipt) return;
-  window.print();
+  beginKhataPrint();
 }
 
 
@@ -2012,87 +2034,77 @@ ${b.status === "Cancelled" ? `
     </div>
   `).join("") || "No bills found";
 }
-function editBill(id){
-  const b=db.bills.find(x=>x.id===id);
-  if(!b) return alert("Bill not found");
 
-  editingBillId=id;
-  $("billSaveButton").textContent="Update Bill";
-  $("customer").value=b.customer;
-  $("mobile").value=b.mobile||"";
-  $("billDate").value=b.date;
-  $("billNo").value=b.id;
+function editBill(id) {
+  const b = db.bills.find(x => String(x.id) === String(id));
 
-  $("discount").value=b.discount||0;
-  $("gst").value=b.gst ? (b.gst/(Math.max(0,b.subtotal-b.discount)||1))*100 : 0;
-  // Is bill ke original rates restore karo
-const oldItems = b.items || [];
-const oldExchange = b.exchangeDetails || {};
-
-const oldGoldRate =
-  b.rates?.goldRate ||
-  oldItems.find(x => x.metalType === "Gold")?.rate ||
-  (oldExchange.metal === "Gold" ? oldExchange.rate : 0) ||
-  0;
-
-const oldSilverRate =
-  b.rates?.silverRate ||
-  oldItems.find(x => x.metalType === "Silver")?.rate ||
-  (oldExchange.metal === "Silver" ? oldExchange.rate : 0) ||
-  0;
-
-$("goldRate").value = oldGoldRate || "";
-$("silverRate").value = oldSilverRate || "";
-  // Restore old jewellery exchange details
-const e = b.exchangeDetails || {};
-
-$("exchangeMetal").value = e.metal || "Gold";
-$("exchangeItem").value = e.item || "";
-$("exchangePurity").value = e.purity || "22K";
-
-$("exchangeGross").value = e.gross || 0;
-$("exchangeStone").value = e.stone || 0;
-$("exchangeTunch").value = e.tunch || 91.6;
-$("exchangeRate").value = e.rate || 0;
-$("exchangeDeduction").value = e.deduction || 0;
-  $("paid").value=b.paid||0;
-
-  $("items").innerHTML="";
-  itemCount=0;
-
-  (b.items||[]).forEach(x=>{
-    addItem();
-    const el=$("items").lastElementChild;
-
-    const set=(cls,value)=>{
-      const field=el.querySelector("."+cls);
-      if(field && value!==undefined) field.value=value;
-    };
-
-    set("metal",x.metalType);
-    set("name",x.name);
-    set("purity",x.purity);
-    set("gross",x.gross);
-    set("stone",x.stone);
-    set("rate",x.rate);
-    set("tunch",x.tunch);
-
-    // New bills retain original labour settings.
-    // Older bills may only have calculated labour.
-    set("labour",x.labourInput!==undefined ? x.labourInput : x.labour);
-    set("labourType",x.labourType||"fixed");
-    set("wastage",x.wastage!==undefined ? x.wastage : 0);
-    set("other",x.other);
-  });
-
-  calculate();
-  show("billing");
-  alert("Bill edit mode mein khul gaya hai. Changes ke baad Update Bill button dabayein.");
-}
+  if (!b) return alert("Bill not found");
 
   if (b.status === "Cancelled") {
     return alert("Cancelled bill edit nahi ho sakta");
   }
+
+  if (!confirm("Kya aap Bill " + b.id + " edit karna chahte hain?")) {
+    return;
+  }
+
+  editingBillId = b.id;
+
+  $("customer").value = b.customer || "";
+  $("mobile").value = b.mobile || "";
+  $("billDate").value = b.date || today();
+  $("billNo").value = b.id;
+
+  $("goldRate").value = b.rates?.goldRate || 0;
+  $("silverRate").value = b.rates?.silverRate || 0;
+
+  $("discount").value = b.discount || 0;
+  $("gst").value = b.gst || 0;
+  $("paid").value = b.paid || 0;
+
+  // Purane items ko form mein load karo
+  $("items").innerHTML = "";
+  itemCount = 0;
+
+  (b.items || []).forEach(x => {
+    addItem();
+
+    const el = $("items").lastElementChild;
+
+    el.querySelector(".metal").value = x.metalType || "Gold";
+    el.querySelector(".name").value = x.name || "";
+    el.querySelector(".purity").value = x.purity || "22K";
+    el.querySelector(".gross").value = x.gross || 0;
+    el.querySelector(".stone").value = x.stone || 0;
+    el.querySelector(".rate").value = x.rate || 0;
+    el.querySelector(".tunch").value = x.tunch || 100;
+    el.querySelector(".labour").value =
+      x.labourInput ?? x.labour ?? 0;
+    el.querySelector(".labourType").value =
+      x.labourType || "fixed";
+    el.querySelector(".wastage").value = x.wastage || 0;
+    el.querySelector(".other").value = x.other || 0;
+  });
+
+  // Exchange details load karo
+  const e = b.exchangeDetails || {};
+
+  $("exchangeMetal").value = e.metal || "Gold";
+  $("exchangeItem").value = e.item || "";
+  $("exchangePurity").value = e.purity || "22K";
+  $("exchangeGross").value = e.gross || 0;
+  $("exchangeStone").value = e.stone || 0;
+  $("exchangeTunch").value = e.tunch || 91.6;
+  $("exchangeRate").value = e.rate || 0;
+  $("exchangeDeduction").value = e.deduction || 0;
+
+  $("billSaveButton").textContent = "Update Bill";
+
+  calculate();
+  show("billing");
+
+  alert("Bill edit mode mein open ho gaya hai.");
+}
 
 
 function cancelBill(id) {
@@ -2243,7 +2255,7 @@ function reprintBill(id){
   `;
 
   show("billing");
-  window.print();
+  beginBillPrint();
 }
 
 function backup() {
