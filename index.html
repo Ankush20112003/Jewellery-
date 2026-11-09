@@ -110,8 +110,62 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 <div class="grid">
 <div><label>Discount ₹</label><input id="discount" type="number" value="0" oninput="calculate()"></div>
 <div><label>GST %</label><input id="gst" type="number" value="0" oninput="calculate()"></div>
-<div><label>Old Gold Exchange ₹</label><input id="exchange" type="number" value="0" oninput="calculate()"></div>
-<div><label>Paid Now ₹</label><input id="paid" type="number" value="0" oninput="calculate()"></div>
+<div class="card">
+  <h3>Old Gold / Silver Exchange</h3>
+
+  <label>Metal</label>
+  <select id="exchangeMetal" onchange="calculate()">
+    <option value="Gold">Gold</option>
+    <option value="Silver">Silver</option>
+  </select>
+
+  <label>Old Jewellery Item Name</label>
+  <input id="exchangeItem" placeholder="Old Ring, Chain, Bangle">
+
+  <label>Purity</label>
+  <select id="exchangePurity">
+    <option>24K</option>
+    <option selected>22K</option>
+    <option>18K</option>
+    <option>14K</option>
+    <option>925 Silver</option>
+    <option>999 Silver</option>
+  </select>
+
+  <div class="grid">
+    <div>
+      <label>Gross Weight (gm)</label>
+      <input id="exchangeGross" type="number"
+        step=".001" value="0" oninput="calculate()">
+    </div>
+
+    <div>
+      <label>Stone Weight (gm)</label>
+      <input id="exchangeStone" type="number"
+        step=".001" value="0" oninput="calculate()">
+    </div>
+
+    <div>
+      <label>Tunch (%)</label>
+      <input id="exchangeTunch" type="number"
+        value="91.6" oninput="calculate()">
+    </div>
+
+    <div>
+      <label>Rate per 10 gm ₹</label>
+      <input id="exchangeRate" type="number"
+        value="0" oninput="calculate()">
+    </div>
+
+    <div>
+      <label>Deduction (%)</label>
+      <input id="exchangeDeduction" type="number"
+        value="0" oninput="calculate()">
+    </div>
+  </div>
+
+  <div id="exchangeCalculation" class="total"></div>
+</div><div><label>Paid Now ₹</label><input id="paid" type="number" value="0" oninput="calculate()"></div>
 </div>
 <div id="calculation" class="total"></div>
 <button id="billSaveButton" onclick="saveBill()">Save Bill</button>
@@ -438,24 +492,97 @@ function getItems(){
     };
   });
 }
+
+function getExchange() {
+  const gross = val("exchangeGross");
+  const stone = val("exchangeStone");
+  const tunch = val("exchangeTunch");
+  const rate = val("exchangeRate");
+  const deduction = val("exchangeDeduction");
+
+  const net = Math.max(0, gross - stone);
+
+  const metalValue =
+    net * rate / 10 * tunch / 100;
+
+  const deductionAmount =
+    metalValue * deduction / 100;
+
+  const amount =
+    Math.max(0, metalValue - deductionAmount);
+
+  return {
+    metal: $("exchangeMetal").value,
+    item: $("exchangeItem").value,
+    purity: $("exchangePurity").value,
+    gross,
+    stone,
+    net,
+    tunch,
+    rate,
+    deduction,
+    metalValue,
+    deductionAmount,
+    amount
+  };
+}
 function totals(){
-  const items=getItems();
-  const subtotal=items.reduce((s,x)=>s+x.total,0);
-  const discount=val("discount"),gst=Math.max(0,subtotal-discount)*val("gst")/100;
-  const exchange=val("exchange");
-  const total=Math.max(0,subtotal-discount+gst-exchange);
-  const paid=val("paid");
-  return {items,subtotal,discount,gst,exchange,total,paid,due:Math.max(0,total-paid)};
+  const items = getItems();
+
+  const subtotal = items.reduce(
+    (s,x) => s + x.total, 0
+  );
+
+  const discount = val("discount");
+
+  const gst =
+    Math.max(0, subtotal-discount) *
+    val("gst") / 100;
+
+  const exchangeDetails = getExchange();
+  const exchange = exchangeDetails.amount;
+
+  const total = Math.max(
+    0,
+    subtotal-discount+gst-exchange
+  );
+
+  const paid = val("paid");
+
+  return {
+    items,
+    subtotal,
+    discount,
+    gst,
+    exchange,
+    exchangeDetails,
+    total,
+    paid,
+    due: Math.max(0,total-paid)
+  };
 }
 function calculate(){
-  const t=totals();
-  $("calculation").innerHTML=`
-  Subtotal: <b>${money(t.subtotal)}</b><br>
-  Discount: ${money(t.discount)}<br>GST: ${money(t.gst)}<br>
-  Exchange: ${money(t.exchange)}<hr>
-  Total: <b>${money(t.total)}</b><br>
-  Paid: ${money(t.paid)}<br>
-  Due: <b>${money(t.due)}</b>`;
+  const t = totals();
+  const e = t.exchangeDetails;
+
+  $("calculation").innerHTML = `
+    Subtotal: <b>${money(t.subtotal)}</b><br>
+    Discount: ${money(t.discount)}<br>
+    GST: ${money(t.gst)}<br>
+    Old Jewellery Exchange: <b>${money(t.exchange)}</b><br>
+    <hr>
+    Total: <b>${money(t.total)}</b><br>
+    Paid: ${money(t.paid)}<br>
+    Due: <b>${money(t.due)}</b>
+  `;
+
+  $("exchangeCalculation").innerHTML = `
+    Net Weight: <b>${e.net.toFixed(3)} gm</b><br>
+    Metal Value: ${money(e.metalValue)}<br>
+    Deduction: ${money(e.deductionAmount)}<br>
+    <hr>
+    Exchange Amount: <b>${money(e.amount)}</b>
+  `;
 }
 // Find or create customer
 function findOrCreateCustomer(name, mobile) {
@@ -614,7 +741,22 @@ function printBill(){
   <p>Bill: ${safe($("billNo").value)} | Date: ${safe($("billDate").value)}</p>
   <table><tr><th>Item</th><th>Metal</th><th>Net gm</th><th>Rate/10gm</th><th>Amount</th></tr>
   ${t.items.map(x=>`<tr><td>${safe(x.name)} (${safe(x.purity)})</td><td>${safe(x.metalType)}</td><td>${x.net.toFixed(3)}</td><td>${money(x.rate)}</td><td>${money(x.total)}</td></tr>`).join("")}</table>
-  <h3>Total: ${money(t.total)}</h3><p>Paid: ${money(t.paid)} | Due: ${money(t.due)}</p>
+  ${t.exchange > 0 ? `
+  <h3>Old Jewellery Exchange Details</h3>
+  <table>
+    <tr><td>Metal</td><td>${safe(t.exchangeDetails.metal)}</td></tr>
+    <tr><td>Old Item</td><td>${safe(t.exchangeDetails.item)}</td></tr>
+    <tr><td>Purity</td><td>${safe(t.exchangeDetails.purity)}</td></tr>
+    <tr><td>Gross Weight</td><td>${t.exchangeDetails.gross} gm</td></tr>
+    <tr><td>Stone Weight</td><td>${t.exchangeDetails.stone} gm</td></tr>
+    <tr><td>Net Weight</td><td>${t.exchangeDetails.net.toFixed(3)} gm</td></tr>
+    <tr><td>Tunch</td><td>${t.exchangeDetails.tunch}%</td></tr>
+    <tr><td>Rate / 10 gm</td><td>${money(t.exchangeDetails.rate)}</td></tr>
+    <tr><td>Deduction</td><td>${t.exchangeDetails.deduction}% (${money(t.exchangeDetails.deductionAmount)})</td></tr>
+    <tr><td><b>Exchange Amount</b></td><td><b>${money(t.exchange)}</b></td></tr>
+  </table>
+` : ""}
+<h3>Total: ${money(t.total)}</h3><p>Paid: ${money(t.paid)} | Due: ${money(t.due)}</p>
   <p>Thank you · धन्यवाद</p>`;
   window.print();
 }
