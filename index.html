@@ -849,7 +849,18 @@ function editBill(id){
 
   $("discount").value=b.discount||0;
   $("gst").value=b.gst ? (b.gst/(Math.max(0,b.subtotal-b.discount)||1))*100 : 0;
-  $("exchange").value=b.exchange||0;
+  // Restore old jewellery exchange details
+const e = b.exchangeDetails || {};
+
+$("exchangeMetal").value = e.metal || "Gold";
+$("exchangeItem").value = e.item || "";
+$("exchangePurity").value = e.purity || "22K";
+
+$("exchangeGross").value = e.gross || 0;
+$("exchangeStone").value = e.stone || 0;
+$("exchangeTunch").value = e.tunch || 91.6;
+$("exchangeRate").value = e.rate || 0;
+$("exchangeDeduction").value = e.deduction || 0;
   $("paid").value=b.paid||0;
 
   $("items").innerHTML="";
