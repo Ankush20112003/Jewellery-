@@ -240,6 +240,7 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 </main>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -960,11 +961,187 @@ function reprintBill(id){
   show("billing");
   window.print();
 }
-function backup(){
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));
-  a.download="mahender-jewellers-backup.json";a.click();
+
+function backup() {
+  if (typeof XLSX === "undefined") {
+    alert("Excel library load nahi hui. Page refresh karke try karein.");
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // 1. CUSTOMER MASTER
+  const customers = db.customers.map(c => ({
+    "Customer ID": c.id,
+    "Customer Name": c.name,
+    "Mobile": c.mobile || "",
+    "Address": c.address || "",
+    "Khata Balance": db.payments
+      .filter(p => p.customerId === c.id)
+      .reduce((sum, p) =>
+        sum + (p.type === "debit" ? Number(p.amount || 0) : -Number(p.amount || 0)), 0)
+  }));
+
+  // 2. BILL REGISTER
+  const bills = db.bills.map(b => ({
+    "Bill Number": b.id,
+    "Date": b.date,
+    "Customer ID": b.customerId || "",
+    "Customer Name": b.customer,
+    "Mobile": b.mobile || "",
+    "Subtotal": b.subtotal || 0,
+    "Discount": b.discount || 0,
+    "GST": b.gst || 0,
+    "Exchange Amount": b.exchange || 0,
+    "Total": b.total || 0,
+    "Paid": b.paid || 0,
+    "Due": b.due || 0
+  }));
+
+  // 3. ITEM DETAILS
+  const items = [];
+  db.bills.forEach(b => {
+    (b.items || []).forEach(item => {
+      items.push({
+        "Bill Number": b.id,
+        "Date": b.date,
+        "Customer": b.customer,
+        "Metal": item.metalType || "",
+        "Item Name": item.name || "",
+        "Purity": item.purity || "",
+        "Gross Weight": item.gross || 0,
+        "Stone Weight": item.stone || 0,
+        "Net Weight": item.net || 0,
+        "Rate per 10 gm": item.rate || 0,
+        "Tunch": item.tunch || 0,
+        "Metal Value": item.metalValue || 0,
+        "Labour Input": item.labourInput ?? item.labour ?? 0,
+        "Labour Type": item.labourType || "fixed",
+        "Wastage %": item.wastage || 0,
+        "Wastage Amount": item.waste || 0,
+        "Other Charges": item.other || 0,
+        "Item Total": item.total || 0
+      });
+    });
+  });
+
+  // 4. EXCHANGE REGISTER
+  const exchanges = db.bills
+    .filter(b => b.exchangeDetails || Number(b.exchange || 0) > 0)
+    .map(b => {
+      const e = b.exchangeDetails || {};
+      return {
+        "Bill Number": b.id,
+        "Date": b.date,
+        "Customer": b.customer,
+        "Metal": e.metal || "",
+        "Old Item": e.item || "",
+        "Purity": e.purity || "",
+        "Gross Weight": e.gross || 0,
+        "Stone Weight": e.stone || 0,
+        "Net Weight": e.net || 0,
+        "Tunch": e.tunch || 0,
+        "Rate per 10 gm": e.rate || 0,
+        "Metal Value": e.metalValue || 0,
+        "Deduction %": e.deduction || 0,
+        "Deduction Amount": e.deductionAmount || 0,
+        "Exchange Amount": b.exchange || 0
+      };
+    });
+
+  // 5. CUSTOMER KHATA / LEDGER
+  const khata = [];
+  const sortedPayments = [...db.payments].sort((a, b) =>
+    String(a.date || "").localeCompare(String(b.date || ""))
+  );
+  const balances = {};
+
+  sortedPayments.forEach(p => {
+    const customer = db.customers.find(c => c.id === p.customerId);
+    const debit = p.type === "debit" ? Number(p.amount || 0) : 0;
+    const credit = p.type === "credit" ? Number(p.amount || 0) : 0;
+
+    balances[p.customerId] = (balances[p.customerId] || 0) + debit - credit;
+
+    khata.push({
+      "Date": p.date || "",
+      "Customer": customer ? customer.name : "Unknown",
+      "Customer ID": p.customerId || "",
+      "Details": p.note || "",
+      "Debit": debit,
+      "Credit": credit,
+      "Running Balance": balances[p.customerId],
+      "Payment ID": p.id || ""
+    });
+  });
+
+  // 6. PAYMENT REGISTER
+  const payments = db.payments.map(p => {
+    const customer = db.customers.find(c => c.id === p.customerId);
+    return {
+      "Payment ID": p.id || "",
+      "Date": p.date || "",
+      "Customer": customer ? customer.name : "Unknown",
+      "Customer ID": p.customerId || "",
+      "Type": p.type || "",
+      "Amount": p.amount || 0,
+      "Details": p.note || ""
+    };
+  });
+
+  // 7. DAILY CASH BOOK
+  const cash = db.cash.map(x => ({
+    "Entry ID": x.id || "",
+    "Date": x.date || "",
+    "Type": x.type === "in" ? "Cash In" : "Cash Out",
+    "Amount": x.amount || 0,
+    "Category": x.category || "",
+    "Description": x.description || ""
+  }));
+
+  // 8. DAILY CASH SUMMARY
+  const dailyMap = {};
+
+  db.cash.forEach(x => {
+    const date = x.date || "No Date";
+    if (!dailyMap[date]) {
+      dailyMap[date] = { "Date": date, "Cash In": 0, "Cash Out": 0 };
+    }
+
+    if (x.type === "in") {
+      dailyMap[date]["Cash In"] += Number(x.amount || 0);
+    } else {
+      dailyMap[date]["Cash Out"] += Number(x.amount || 0);
+    }
+  });
+
+  const dailySummary = Object.values(dailyMap).map(x => ({
+    ...x,
+    "Net Cash": x["Cash In"] - x["Cash Out"]
+  }));
+
+  // Add all sheets to Excel workbook
+  function addSheet(name, rows) {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  }
+
+  addSheet("Customer Master", customers);
+  addSheet("Bill Register", bills);
+  addSheet("Item Details", items);
+  addSheet("Exchange Register", exchanges);
+  addSheet("Customer Khata", khata);
+  addSheet("Payment Register", payments);
+  addSheet("Daily Cash Book", cash);
+  addSheet("Daily Summary", dailySummary);
+
+  // Download Excel file
+  XLSX.writeFile(
+    wb,
+    "Mahender-Jewellers-Managed-Backup-" + today() + ".xlsx"
+  );
 }
+
 $("billDate").value=today();$("paymentDate").value=today();$("cashDate").value=today();
 // $("billNo").value="MJ-"+Date.now().toString().slice(-7);
 addItem();
