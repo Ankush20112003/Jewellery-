@@ -73,7 +73,8 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 <button onclick="show('khata')">Khata</button>
 <button onclick="show('daily')">Daily Cash</button>
 <button onclick="show('history')">Bill History</button>
-<button onclick="backup()">Backup</button>
+<button onclick="backup()">Excel Backup</button>
+<button onclick="backupPDF()">PDF Backup</button>
 <button onclick="logoutUser()">Logout</button>
 </nav>
 
@@ -241,6 +242,8 @@ td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -1141,6 +1144,188 @@ function backup() {
     "Mahender-Jewellers-Managed-Backup-" + today() + ".xlsx"
   );
 }
+
+function backupPDF() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("PDF library load nahi hui. Page refresh karke try karein.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4"
+  });
+
+  let y = 18;
+
+  function heading(title) {
+    if (y > 175) {
+      doc.addPage();
+      y = 18;
+    }
+
+    doc.setFontSize(15);
+    doc.text(title, 14, y);
+    y += 7;
+  }
+
+  function addTable(title, columns, rows) {
+    heading(title);
+
+    if (typeof doc.autoTable !== "function") {
+      throw new Error("PDF table plugin load nahi hua.");
+    }
+
+    doc.autoTable({
+      startY: y,
+      head: [columns],
+      body: rows,
+      theme: "grid",
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+        overflow: "linebreak"
+      },
+      headStyles: {
+        fillColor: [86, 59, 18]
+      },
+      margin: { left: 10, right: 10 }
+    });
+
+    y = doc.lastAutoTable.finalY + 12;
+  }
+
+  try {
+    doc.setFontSize(19);
+    doc.text("MAHENDER JEWELLERS", 148, y, { align: "center" });
+    y += 7;
+
+    doc.setFontSize(10);
+    doc.text("Titram | Kailram Wale | Complete Data Backup", 148, y, {
+      align: "center"
+    });
+    y += 10;
+
+    doc.setFontSize(9);
+    doc.text("Backup Date: " + today(), 14, y);
+    y += 10;
+
+    // Customer Master
+    addTable("1. CUSTOMER MASTER",
+      ["ID", "Name", "Mobile", "Address"],
+      db.customers.map(c => [
+        c.id, c.name, c.mobile || "", c.address || ""
+      ])
+    );
+
+    // Bill Register
+    addTable("2. BILL REGISTER",
+      ["Bill No.", "Date", "Customer", "Subtotal", "Discount", "GST", "Exchange", "Total", "Paid", "Due"],
+      db.bills.map(b => [
+        b.id, b.date, b.customer,
+        b.subtotal || 0, b.discount || 0, b.gst || 0,
+        b.exchange || 0, b.total || 0, b.paid || 0, b.due || 0
+      ])
+    );
+
+    // Item Details
+    const itemRows = [];
+    db.bills.forEach(b => {
+      (b.items || []).forEach(i => {
+        itemRows.push([
+          b.id, b.customer, i.name || "",
+          i.metalType || "", i.purity || "",
+          i.gross || 0, i.stone || 0, i.net || 0,
+          i.rate || 0, i.total || 0
+        ]);
+      });
+    });
+
+    addTable("3. ITEM DETAILS",
+      ["Bill", "Customer", "Item", "Metal", "Purity", "Gross", "Stone", "Net", "Rate", "Amount"],
+      itemRows
+    );
+
+    // Exchange Register
+    addTable("4. EXCHANGE REGISTER",
+      ["Bill", "Customer", "Metal", "Old Item", "Gross", "Net", "Tunch", "Rate", "Deduction", "Amount"],
+      db.bills
+        .filter(b => b.exchangeDetails || Number(b.exchange || 0) > 0)
+        .map(b => {
+          const e = b.exchangeDetails || {};
+          return [
+            b.id, b.customer, e.metal || "", e.item || "",
+            e.gross || 0, e.net || 0, e.tunch || 0,
+            e.rate || 0, e.deduction || 0, b.exchange || 0
+          ];
+        })
+    );
+
+    // Customer Khata
+    const customerMap = Object.fromEntries(
+      db.customers.map(c => [c.id, c.name])
+    );
+
+    addTable("5. CUSTOMER KHATA",
+      ["Date", "Customer", "Details", "Debit", "Credit"],
+      db.payments.map(p => [
+        p.date || "",
+        customerMap[p.customerId] || "Unknown",
+        p.note || "",
+        p.type === "debit" ? p.amount : 0,
+        p.type === "credit" ? p.amount : 0
+      ])
+    );
+
+    // Payment Register
+    addTable("6. PAYMENT REGISTER",
+      ["Payment ID", "Date", "Customer", "Type", "Amount", "Details"],
+      db.payments.map(p => [
+        p.id || "", p.date || "",
+        customerMap[p.customerId] || "Unknown",
+        p.type || "", p.amount || 0, p.note || ""
+      ])
+    );
+
+    // Daily Cash Book
+    addTable("7. DAILY CASH BOOK",
+      ["Date", "Type", "Amount", "Category", "Description"],
+      db.cash.map(c => [
+        c.date || "",
+        c.type === "in" ? "Cash In" : "Cash Out",
+        c.amount || 0,
+        c.category || "",
+        c.description || ""
+      ])
+    );
+
+    // Daily Summary
+    const summary = {};
+
+    db.cash.forEach(c => {
+      const date = c.date || "No Date";
+      if (!summary[date]) summary[date] = { in: 0, out: 0 };
+
+      if (c.type === "in") summary[date].in += Number(c.amount || 0);
+      else summary[date].out += Number(c.amount || 0);
+    });
+
+    addTable("8. DAILY CASH SUMMARY",
+      ["Date", "Cash In", "Cash Out", "Net Cash"],
+      Object.entries(summary).map(([date, v]) => [
+        date, v.in, v.out, v.in - v.out
+      ])
+    );
+
+    doc.save("Mahender-Jewellers-Backup-" + today() + ".pdf");
+
+  } catch (error) {
+    alert("PDF Backup Error: " + error.message);
+  }
+}
+
 
 $("billDate").value=today();$("paymentDate").value=today();$("cashDate").value=today();
 // $("billNo").value="MJ-"+Date.now().toString().slice(-7);
