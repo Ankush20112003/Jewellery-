@@ -605,143 +605,555 @@ setInterval(load, 15000);$('billDate').value=today();$('dailyDate').value=today(
 
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script></body></html> -->
-<!doctype html>
-<html lang="en">
+
+
+
+<!DOCTYPE html>
+<html lang="hi">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#80520f"><meta name="description" content="Mahender Jewellers Pro billing, customer khata and daily cash book">
-<title>Mahender Jewellers Pro</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mahender Jewellers Billing</title>
 <style>
-:root{--gold:#a97820;--ink:#2b2112;--bg:#f6f2e9;--card:#fff;--line:#e7dcc5;--muted:#776d5e;--red:#a23b32;--green:#2e7049}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,-apple-system,sans-serif}
-header{background:linear-gradient(130deg,#3f2909,#986817);color:white;text-align:center;padding:15px}
-header h1{margin:0;font-size:20px}header p{margin:3px 0 0;font-size:11px;opacity:.9}
-nav{display:flex;gap:5px;overflow:auto;padding:8px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-nav button{white-space:nowrap;background:#efe6d4;color:#5a421b;padding:8px 10px;font-size:12px;border:0;border-radius:6px;cursor:pointer}nav button.active{background:var(--gold);color:#fff}
-main{max-width:850px;margin:auto;padding:10px}.panel{display:none}.panel.active{display:block}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0;box-shadow:0 2px 6px rgba(0,0,0,0.03)}
-h2{font-size:16px;margin:0 0 10px}button{border:0;border-radius:8px;background:var(--gold);color:white;font-weight:bold;padding:10px;font-size:13px;cursor:pointer}
-button.alt{background:#eee5d4;color:#543d16}button.red{background:var(--red)}
-label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
-input,select,textarea{width:100%;border:1px solid #d9ceb9;border-radius:6px;padding:8px;background:#fff;font:inherit}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.field{margin-bottom:8px}
-.sumrow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #d8c7a4;font-size:12px}
-.grand{text-align:center;padding:10px;font-size:22px;color:#76500e;font-weight:bold}
-.item{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}
-table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:6px;border-bottom:1px solid var(--line);text-align:left}th.num,td.num{text-align:right}
-#customerBill{background:#fff;padding:15px;border:1px solid #ccc;max-width:700px;margin:auto}
-</style></head>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f1e8;color:#302514;font:15px Arial}
+header{background:#563b12;color:white;text-align:center;padding:20px}
+header h1{margin:0;color:#f4d58a}
+nav{display:flex;gap:6px;overflow:auto;background:white;padding:10px;position:sticky;top:0}
+button{border:0;border-radius:7px;padding:10px 14px;background:#93651b;color:white;cursor:pointer}
+nav button{white-space:nowrap}
+main{max-width:1000px;margin:auto;padding:12px}
+section{display:none}
+section.active{display:block}
+.card{background:white;padding:15px;border-radius:12px;margin:12px 0;border:1px solid #e4d8bf}
+input,select,textarea{width:100%;padding:10px;border:1px solid #d7c9ae;border-radius:7px;margin:4px 0 10px}
+label{font-size:12px;color:#71634c}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.item{border:1px solid #e4d8bf;padding:10px;border-radius:9px;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+.total{background:#f5ead3;padding:12px;border-radius:8px;margin:10px 0}
+.small{font-size:12px;color:#756b5c}
+@media(max-width:550px){.grid{grid-template-columns:1fr}}
+@media print {
+  body {
+    background: white;
+  }
+
+  header,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  section {
+    display: none !important;
+  }
+
+  section#billing {
+    display: block !important;
+  }
+
+  #billView {
+    display: block !important;
+    border: none;
+    box-shadow: none;
+  }
+}</style>
+</head>
 <body>
-<header><h1>✦ MAHENDER JEWELLERS ✦</h1><p>Billing & Cloud Sync System</p></header>
+<header>
+<h1>✦ MAHENDER JEWELLERS ✦</h1>
+<p>महेंद्र ज्वैलर्स | Titram | Kailram Wale</p>
+<p>Billing · Customer Khata · Daily Cash Book</p>
+</header>
+
+<div id="login" class="card" style="max-width:420px;margin:25px auto">
+<h2>Owner Login</h2>
+<label>Email</label><input id="email" type="email">
+<label>Password</label><input id="password" type="password">
+<button onclick="loginUser()">Login</button>
+<p id="loginMsg" class="small">Firebase setup करने के बाद Login करें।</p>
+</div>
+
+<div id="app" hidden>
 <nav class="no-print">
-<button class="active" data-tab="billPanel">New Bill / नया बिल</button>
-<button data-tab="historyPanel">History / पुराने बिल</button>
+<button onclick="show('billing')">New Bill</button>
+<button onclick="show('customers')">Customers</button>
+<button onclick="show('khata')">Khata</button>
+<button onclick="show('daily')">Daily Cash</button>
+<button onclick="show('history')">Bill History</button>
+<button onclick="backup()">Backup</button>
+<button onclick="logoutUser()">Logout</button>
 </nav>
+
 <main>
-<section id="billPanel" class="panel active">
-<div class="card"><h2>Customer Details / ग्राहक विवरण</h2>
+<section id="billing" class="active">
+<div class="card no-print">
+<h2>New Jewellery Bill</h2>
 <div class="grid">
-<div class="field"><label>Customer Name *</label><input id="custName" list="customerOptions" placeholder="Name"><datalist id="customerOptions"></datalist></div>
-<div class="field"><label>Mobile</label><input id="custMobile" inputmode="tel"></div>
-<div class="field"><label>Date</label><input id="billDate" type="date"></div>
-<div class="field"><label>Bill No.</label><input id="billNo"></div>
-</div></div>
-<div class="card"><h2>Jewellery Items / सामान</h2><div id="itemList"></div><button id="addItem" class="alt" style="width:100%">＋ Add Item</button></div>
-<div class="card"><h2>Totals & Payment</h2>
-<div class="grid3">
-<div class="field"><label>Discount (₹)</label><input id="discount" type="number" value="0"></div>
-<div class="field"><label>Paid Now (₹)</label><input id="paidNow" type="number" value="0"></div>
-<div class="field"><label>Payment Mode</label><select id="payMode"><option>Cash</option><option>UPI</option><option>Credit / उधार</option></select></div>
-</div><div id="liveSummary"></div>
-<button id="saveBill" style="width:100%;margin-top:10px">Save Bill & Sync to Cloud / सेव करें</button>
+<div><label>Customer Name</label><input id="customer" list="customerList"><datalist id="customerList"></datalist></div>
+<div><label>Mobile Number</label><input id="mobile"></div>
+<div><label>Bill Date</label><input id="billDate" type="date"></div>
+<div><label>Bill Number</label><input id="billNo"></div>
+</div>
+<h3>Jewellery Items</h3>
+<div id="items"></div>
+<button onclick="addItem()">+ Add Item</button>
+<div class="grid">
+<div><label>Discount ₹</label><input id="discount" type="number" value="0" oninput="calculate()"></div>
+<div><label>GST %</label><input id="gst" type="number" value="0" oninput="calculate()"></div>
+<div><label>Old Gold Exchange ₹</label><input id="exchange" type="number" value="0" oninput="calculate()"></div>
+<div><label>Paid Now ₹</label><input id="paid" type="number" value="0" oninput="calculate()"></div>
+</div>
+<div id="calculation" class="total"></div>
+<button onclick="saveBill()">Save Bill</button>
+<button onclick="printBill()">Print Bill</button>
+</div>
+<div class="no-print" style="margin:10px 0">
+  <button onclick="downloadBillJPG()">
+    Download Bill JPG
+  </button>
+</div>
+
+<div id="billView" class="card"></div>
+</section>
+
+<section id="customers">
+<div class="card">
+<h2>Customer Book</h2>
+<label>Name</label><input id="newName">
+<label>Mobile</label><input id="newMobile">
+<label>Address</label><input id="newAddress">
+<button onclick="addCustomer()">Save Customer</button>
+</div>
+<div class="card">
+<h3>Customer List</h3>
+<input id="customerSearch" placeholder="Search customer" oninput="render()">
+<div id="customerRows"></div>
 </div>
 </section>
 
-<section id="historyPanel" class="panel">
-<div class="card"><h2>Synced Cloud Bills / क्लाउड बिल इतिहास</h2><input id="billSearch" placeholder="Search bill..."><div id="billHistory"></div></div>
+<section id="khata">
+<div class="card">
+<h2>Customer Khata</h2>
+<label>Select Customer</label><select id="khataCustomer" onchange="renderKhata()"></select>
+<div id="khataRows"></div>
+</div>
+<div class="card">
+<h3>Receive Payment</h3>
+<label>Customer</label><select id="paymentCustomer"></select>
+<label>Amount ₹</label><input id="paymentAmount" type="number">
+<label>Date</label><input id="paymentDate" type="date">
+<label>Payment Mode</label>
+<select id="paymentMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank</option></select>
+<button onclick="receivePayment()">Save Payment</button>
+</div>
+</section>
+
+<section id="daily">
+<div class="card">
+<h2>Daily Cash Book</h2>
+<label>Date</label><input id="cashDate" type="date" onchange="renderDaily()">
+<div id="dailyRows"></div>
+</div>
+<div class="card">
+<h3>Cash Entry</h3>
+<label>Entry Type</label><select id="cashType"><option value="in">Cash In</option><option value="out">Cash Out</option></select>
+<label>Amount ₹</label><input id="cashAmount" type="number">
+<label>Category</label><input id="cashCategory" placeholder="Expense, supplier, other">
+<label>Description</label><input id="cashDescription">
+<button onclick="saveCash()">Save Entry</button>
+</div>
+</section>
+
+<section id="history">
+<div class="card">
+<h2>Bill History</h2>
+<input id="billSearch" placeholder="Search bill/customer" oninput="render()">
+<div id="billRows"></div>
+</div>
 </section>
 </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <script>
-const webAppUrl = "https://script.google.com/macros/s/AKfycbzpWQerWSxJAy-Xk9gE1CvvpS6OvymB77TJC0v1sOl6Lp8Qf_G1AwIfbu7ojfu_QJfAXA/exec";
-const $=id=>document.getElementById(id), today=()=>new Date().toISOString().slice(0,10), num=v=>Math.max(0,Number(v)||0);
-const fmt=n=>'₹'+(Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2});
-let db={bills:[],customers:[]}, items=[];
-
-function load(){
-  try{ db = JSON.parse(localStorage.getItem('mj_db')||'{"bills":[],"customers":[]}'); }catch(e){}
-  if(webAppUrl){
-    let s=document.createElement('script');
-    s.src=webAppUrl+"?callback=handleCloud";
-    document.body.appendChild(s);
-  }
-}
-
-window.handleCloud=function(cloudBills){
-  if(Array.isArray(cloudBills)){
-    cloudBills.forEach(cb=>{
-      if(!db.bills.some(b=>b.id===cb.id)){
-        db.bills.unshift({id:cb.id, date:cb.date, customer:cb.customer, mobile:cb.mobile, total:cb.total, paid:cb.paid, due:cb.due});
-        if(cb.customer && !db.customers.some(c=>c.name===cb.customer)){
-          db.customers.push({name:cb.customer, mobile:cb.mobile});
-        }
-      }
-    });
-    persist();
-  }
+// STEP: Replace these values with your Firebase Web App config.
+const firebaseConfig = {
+  apiKey: "AIzaSyBy0HnZeryXRS1hZmwDAsw4QANnZpWQxLU",
+  authDomain: "mahender-jewellers.firebaseapp.com",
+  projectId: "mahender-jewellers",
+  storageBucket: "mahender-jewellers.firebasestorage.app",
+  messagingSenderId: "429190169571",
+  appId: "1:429190169571:web:8b2e1ff91800d077a596d6",
+  measurementId: "G-KX4JN8PKWR"
 };
 
-function persist(){ localStorage.setItem('mj_db', JSON.stringify(db)); refreshUI(); }
-function tab(id){ document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id===id)); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===id)); if(id==='historyPanel') renderHistory(); }
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+firebase.initializeApp(firebaseConfig);
 
-function addItem(){ items.push({name:'', gross:'', rate:''}); renderItems(); }
-function renderItems(){
-  $('itemList').innerHTML = items.map((x,i)=>`<div class="item"><div style="display:flex;justify-content:space-between"><b>Item ${i+1}</b><button class="red" onclick="items.splice(${i},1);renderItems()">X</button></div>
-  <div class="grid3">
-  <div class="field"><label>Name</label><input data-k="name" value="${x.name}" placeholder="Ring/Necklace"></div>
-  <div class="field"><label>Weight (gm)</label><input data-k="gross" type="number" step=".001" value="${x.gross}"></div>
-  <div class="field"><label>Rate / 10gm</label><input data-k="rate" type="number" value="${x.rate}"></div>
-  </div></div>`).join('');
-  $('itemList').querySelectorAll('.item').forEach((el,i)=>el.querySelectorAll('[data-k]').forEach(inp=>inp.oninput=e=>items[i][inp.dataset.k]=e.target.value));
-  calcSum();
+const auth = firebase.auth();
+const dbCloud = firebase.firestore();
+
+const ALLOWED_UID = "Zx3se9HC2OPro430lwQnXMjE74f2";
+
+const cloudRef = dbCloud.doc(
+  "stores/mahender-jewellers/database/main"
+);
+
+let db = {
+  customers: [],
+  bills: [],
+  payments: [],
+  cash: []
+};
+
+let itemCount = 0;
+let unsubscribe = null;
+let cloudReady = false;
+let saving = false;
+
+const $ = id => document.getElementById(id);
+
+const today = () => {
+  const d = new Date();
+  return [
+    d.getFullYear(),
+    String(d.getMonth()+1).padStart(2,"0"),
+    String(d.getDate()).padStart(2,"0")
+  ].join("-");
+};
+
+const money = n =>
+  "₹" + Number(n || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
+const val = id => Number($(id).value || 0);
+
+const safe = s =>
+  String(s ?? "").replace(/[&<>"']/g,c=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[c]));
+
+function loginUser() {
+  auth.signInWithEmailAndPassword(
+    $("email").value.trim(),
+    $("password").value
+  ).catch(e => {
+    $("loginMsg").textContent = e.message;
+  });
 }
 
-function calcSum(){
-  let sub = items.reduce((s,x)=>s+(num(x.gross)*num(x.rate)/10),0);
-  let disc = num($('discount').value), paid = num($('paidNow').value);
-  let total = Math.max(0, sub - disc), due = Math.max(0, total - paid);
-  $('liveSummary').innerHTML = `<div class="sumrow"><span>Subtotal</span><b>${fmt(sub)}</b></div><div class="sumrow"><span>Discount</span><b>${fmt(disc)}</b></div><div class="sumrow"><span>Paid</span><b>${fmt(paid)}</b></div><div class="grand">${fmt(total)}</div><div class="sumrow"><span>Due Balance</span><b>${fmt(due)}</b></div>`;
-  return {sub, total, paid, due};
+function logoutUser() {
+  auth.signOut();
 }
-['discount','paidNow'].forEach(id=>$(id).oninput=calcSum);
 
-function saveBill(){
-  let name = $('custName').value.trim();
-  if(!name){ alert('Enter customer name'); return; }
-  if(!items.length){ alert('Add items'); return; }
-  let s = calcSum();
-  let bill = {id:$('billNo').value, date:$('billDate').value, customer:name, mobile:$('custMobile').value, total:s.total, paid:s.paid, due:s.due};
-  
-  db.bills.unshift(bill);
-  if(!db.customers.some(c=>c.name===name)) db.customers.push({name, mobile:bill.mobile});
-  persist();
+auth.onAuthStateChanged(async user => {
+  cloudReady = false;
 
-  if(webAppUrl){
-    fetch(webAppUrl, {method:"POST", mode:"no-cors", headers:{"Content-Type":"application/json"}, body:JSON.stringify(bill)}).catch(e=>console.log(e));
+  if (unsubscribe) {
+    unsubscribe();
+    unsubscribe = null;
   }
-  alert('Bill saved and synced to Google Sheet!');
-  location.reload();
+
+  if (!user) {
+    $("login").hidden = false;
+    $("app").hidden = true;
+    return;
+  }
+
+  if (user.uid !== ALLOWED_UID) {
+    $("loginMsg").textContent =
+      "Access denied: This account is not authorized.";
+    await auth.signOut();
+    return;
+  }
+
+  $("login").hidden = true;
+  $("app").hidden = false;
+  $("loginMsg").textContent = "Login successful";
+
+  try {
+    const initial = await cloudRef.get();
+
+    if (!initial.exists) {
+      await cloudRef.set({
+        db: {
+          customers: [],
+          bills: [],
+          payments: [],
+          cash: []
+        },
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    cloudReady = true;
+
+    unsubscribe = cloudRef.onSnapshot(snap => {
+      if (!snap.exists) return;
+
+      const data = snap.data();
+
+      if (data.db) {
+        db = {
+          customers: data.db.customers || [],
+          bills: data.db.bills || [],
+          payments: data.db.payments || [],
+          cash: data.db.cash || []
+        };
+
+        localStorage.setItem(
+          "mahenderBackup",
+          JSON.stringify(db)
+        );
+
+        render();
+      }
+    }, error => {
+      alert("Firebase Sync Error: " + error.message);
+    });
+
+  } catch (error) {
+    cloudReady = false;
+    alert("Firebase connection error: " + error.message);
+  }
+});
+
+async function saveCloud() {
+  if (!cloudReady || !auth.currentUser) return;
+  if (auth.currentUser.uid !== ALLOWED_UID) return;
+  if (saving) return;
+
+  saving = true;
+
+  try {
+    await cloudRef.set({
+      db: db,
+      updatedAt:
+        firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+  } catch (error) {
+    alert("Cloud Save Error: " + error.message);
+
+  } finally {
+    saving = false;
+  }
 }
 
+function persist() {
+  localStorage.setItem(
+    "mahenderBackup",
+    JSON.stringify(db)
+  );
+
+  render();
+  saveCloud();
+}
+
+function show(id){
+  document.querySelectorAll("main section").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+  render();
+}
+
+function addItem(){
+  const id=++itemCount;
+  const div=document.createElement("div");
+  div.className="item";
+  div.innerHTML=`
+  <b>Item ${id}</b>
+  <div class="grid">
+  <div><label>Metal</label><select class="metal"><option>Gold</option><option>Silver</option></select></div>
+  <div><label>Item Name</label><input class="name" placeholder="Ring, Chain"></div>
+  <div><label>Purity</label><select class="purity"><option>24K</option><option selected>22K</option><option>18K</option><option>14K</option><option>925 Silver</option><option>999 Silver</option></select></div>
+  <div><label>Gross Weight gm</label><input class="gross" type="number" step=".001" value="0"></div>
+  <div><label>Stone Weight gm</label><input class="stone" type="number" step=".001" value="0"></div>
+  <div><label>Rate per 10 gm ₹</label><input class="rate" type="number" value="0"></div>
+  <div><label>Tunch %</label><input class="tunch" type="number" value="100"></div>
+  <div><label>Labour ₹</label><input class="labour" type="number" value="0"></div>
+  <div><label>Labour Type</label><select class="labourType"><option value="fixed">Fixed</option><option value="gram">Per Gram</option><option value="percent">% of Metal Value</option></select></div>
+  <div><label>Wastage %</label><input class="wastage" type="number" value="0"></div>
+  <div><label>Other Charges ₹</label><input class="other" type="number" value="0"></div>
+  </div>
+  <button class="no-print" onclick="this.parentElement.remove();calculate()">Remove Item</button>`;
+  $("items").appendChild(div);
+  div.querySelectorAll("input,select").forEach(x=>x.addEventListener("input",calculate));
+  calculate();
+}
+function getItems(){
+  return [...$("items").children].map(el=>{
+    const q=c=>Number(el.querySelector("."+c).value||0);
+    const s=c=>el.querySelector("."+c).value;
+    const net=Math.max(0,q("gross")-q("stone"));
+    const raw=net*q("rate")/10;
+    const metal=raw*q("tunch")/100;
+    const waste=raw*q("wastage")/100;
+    const labour=s("labourType")==="gram"?net*q("labour"):s("labourType")==="percent"?metal*q("labour")/100:q("labour");
+    return {metalType:s("metal"),name:s("name"),purity:s("purity"),gross:q("gross"),stone:q("stone"),net,rate:q("rate"),tunch:q("tunch"),labour,waste,other:q("other"),total:metal+waste+labour+q("other"),metalValue:metal};
+  });
+}
+function totals(){
+  const items=getItems();
+  const subtotal=items.reduce((s,x)=>s+x.total,0);
+  const discount=val("discount"),gst=Math.max(0,subtotal-discount)*val("gst")/100;
+  const exchange=val("exchange");
+  const total=Math.max(0,subtotal-discount+gst-exchange);
+  const paid=val("paid");
+  return {items,subtotal,discount,gst,exchange,total,paid,due:Math.max(0,total-paid)};
+}
+function calculate(){
+  const t=totals();
+  $("calculation").innerHTML=`
+  Subtotal: <b>${money(t.subtotal)}</b><br>
+  Discount: ${money(t.discount)}<br>GST: ${money(t.gst)}<br>
+  Exchange: ${money(t.exchange)}<hr>
+  Total: <b>${money(t.total)}</b><br>
+  Paid: ${money(t.paid)}<br>
+  Due: <b>${money(t.due)}</b>`;
+}
+function findOrCreateCustomer(name,mobile){
+  let c=db.customers.find(x=>x.name.toLowerCase()===name.toLowerCase() && x.mobile===mobile);
+  if(!c){c={id:"C"+Date.now(),name,mobile,address:""};db.customers.push(c);}
+  return c;
+}
+function saveBill(){
+  const name=$("customer").value.trim();
+  if(!name)return alert("Customer name enter karein");
+  const t=totals();
+  if(t.paid > t.total) {
+  return alert("Paid amount total se zyada nahi ho sakta");
+  }
+  if(!t.items.length || !t.items.some(x=>x.name && x.gross>0 && x.rate>0))return alert("Item details complete karein");
+  const c=findOrCreateCustomer(name,$("mobile").value.trim());
+  const bill={id:$("billNo").value,date:$("billDate").value,customerId:c.id,customer:name,mobile:c.mobile,...t};
+  db.bills.unshift(bill);
+  if(t.due>0)db.payments.push({id:"D"+Date.now(),customerId:c.id,date:bill.date,type:"debit",amount:t.due,note:"Bill "+bill.id});
+  if(t.paid>0)db.cash.push({id:"R"+Date.now(),date:bill.date,type:"in",amount:t.paid,category:"Bill payment",description:bill.id});
+  persist();
+  alert("Bill saved");
+  printBill();
+}
+function printBill(){
+  const t=totals();
+  const name=$("customer").value;
+  $("billView").innerHTML=`
+  <h2>MAHENDER JEWELLERS</h2><p>Titram · Kailram Wale</p>
+  <hr>Customer: ${safe(name)} | Mobile: ${safe($("mobile").value)}
+  <p>Bill: ${safe($("billNo").value)} | Date: ${safe($("billDate").value)}</p>
+  <table><tr><th>Item</th><th>Metal</th><th>Net gm</th><th>Rate/10gm</th><th>Amount</th></tr>
+  ${t.items.map(x=>`<tr><td>${safe(x.name)} (${safe(x.purity)})</td><td>${safe(x.metalType)}</td><td>${x.net.toFixed(3)}</td><td>${money(x.rate)}</td><td>${money(x.total)}</td></tr>`).join("")}</table>
+  <h3>Total: ${money(t.total)}</h3><p>Paid: ${money(t.paid)} | Due: ${money(t.due)}</p>
+  <p>Thank you · धन्यवाद</p>`;
+  window.print();
+}
+function addCustomer(){
+  const name=$("newName").value.trim();
+  if(!name)return alert("Name required");
+  db.customers.push({id:"C"+Date.now(),name,mobile:$("newMobile").value,address:$("newAddress").value});
+  persist();$("newName").value="";$("newMobile").value="";$("newAddress").value="";
+}
+function render(){
+  const opts=db.customers.map(c=>`<option value="${safe(c.name)}">`).join("");
+  $("customerList").innerHTML=opts;
+  const choices=db.customers.map(c=>`<option value="${c.id}">${safe(c.name)} (${safe(c.mobile)})</option>`).join("");
+  $("khataCustomer").innerHTML=choices;
+  $("paymentCustomer").innerHTML=choices;
+  const q=($("customerSearch")?.value||"").toLowerCase();
+  $("customerRows").innerHTML=db.customers.filter(c=>(c.name+c.mobile+c.address).toLowerCase().includes(q)).map(c=>`<p>${safe(c.name)} · ${safe(c.mobile)} · ${safe(c.address)}</p>`).join("");
+  renderKhata();renderDaily();renderHistory();
+}
+function balance(id){
+  return db.payments.filter(p=>p.customerId===id).reduce((s,p)=>s+(p.type==="debit"?p.amount:-p.amount),0);
+}
+function renderKhata(){
+  const id=$("khataCustomer").value;
+  const c=db.customers.find(x=>x.id===id);
+  if(!c){$("khataRows").innerHTML="Customer select karein";return;}
+  const ps=db.payments.filter(p=>p.customerId===id);
+  $("khataRows").innerHTML=`<h3>${safe(c.name)} | Balance ${money(balance(id))}</h3>
+  <table><tr><th>Date</th><th>Details</th><th>Debit</th><th>Credit</th></tr>
+  ${ps.map(p=>`<tr><td>${safe(p.date)}</td><td>${safe(p.note||"Payment")}</td><td>${p.type==="debit"?money(p.amount):"-"}</td><td>${p.type==="credit"?money(p.amount):"-"}</td></tr>`).join("")}</table>`;
+}
+function receivePayment(){
+  const id=$("paymentCustomer").value,amount=Number($("paymentAmount").value);
+  const c=db.customers.find(x=>x.id===id);
+  if(!c||!amount||amount<=0)return alert("Customer aur amount enter karein");
+  const date=$("paymentDate").value||today();
+  db.payments.push({id:"P"+Date.now(),customerId:id,date,type:"credit",amount,note:"Payment received"});
+  db.cash.push({id:"R"+Date.now(),date,type:"in",amount,category:"Khata payment",description:c.name});
+  persist();$("paymentAmount").value="";alert("Payment saved");
+}
+function saveCash(){
+  const amount=Number($("cashAmount").value);
+  if(!amount||amount<=0)return alert("Amount enter karein");
+  db.cash.push({id:"X"+Date.now(),date:$("cashDate").value||today(),type:$("cashType").value,amount,category:$("cashCategory").value,description:$("cashDescription").value});
+  persist();$("cashAmount").value="";$("cashDescription").value="";alert("Cash entry saved");
+}
+function renderDaily(){
+  const date=$("cashDate").value||today();
+  const rows=db.cash.filter(x=>x.date===date);
+  const incoming=rows.filter(x=>x.type==="in").reduce((s,x)=>s+x.amount,0);
+  const outgoing=rows.filter(x=>x.type==="out").reduce((s,x)=>s+x.amount,0);
+  $("dailyRows").innerHTML=`<h3>Cash In: ${money(incoming)}</h3><h3>Cash Out: ${money(outgoing)}</h3><h3>Net: ${money(incoming-outgoing)}</h3>`+
+  rows.map(x=>`<p>${safe(x.category)} · ${safe(x.description)} · ${x.type==="in"?"+":"-"}${money(x.amount)}</p>`).join("");
+}
 function renderHistory(){
-  let q = $('billSearch').value.toLowerCase();
-  $('billHistory').innerHTML = db.bills.filter(b=>(b.id+b.customer+b.mobile).toLowerCase().includes(q)).map(b=>`<div style="padding:8px 0;border-bottom:1px solid #eee"><b>${b.customer}</b> (${b.mobile||'—'})<span style="float:right"><b>${fmt(b.total)}</b></span><br><small>${b.id} · ${b.date} · Due: ${fmt(b.due)}</small></div>`).join('')||'<p style="text-align:center;color:#77">No bills found</p>';
+  const q=($("billSearch")?.value||"").toLowerCase();
+  $("billRows").innerHTML=db.bills.filter(b=>(b.customer+b.id+b.date).toLowerCase().includes(q)).map(b=>`<p>${safe(b.date)} · ${safe(b.id)} · ${safe(b.customer)} · ${money(b.total)} (Due ${money(b.due)})</p>`).join("");
 }
-$('billSearch').oninput = renderHistory;
-
-load();
-$('billDate').value = today();
-$('billNo').value = 'MJ-' + Date.now().toString().slice(-6);
+function backup(){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));
+  a.download="mahender-jewellers-backup.json";a.click();
+}
+$("billDate").value=today();$("paymentDate").value=today();$("cashDate").value=today();
+$("billNo").value="MJ-"+Date.now().toString().slice(-7);
 addItem();
-</script></body></html>
+  async function downloadBillJPG() {
+
+  const bill = $("billView");
+
+  if (!bill.innerHTML.trim()) {
+    alert("Pehle bill generate karein");
+    return;
+  }
+
+  try {
+
+    const canvas = await html2canvas(bill, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true
+    });
+
+    const image = canvas.toDataURL("image/jpeg", 0.95);
+
+    const link = document.createElement("a");
+
+    link.href = image;
+    link.download = "Mahender-Jewellers-" +
+      $("billNo").value + ".jpg";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+  } catch (error) {
+    alert("JPG Download Error: " + error.message);
+  }
+}
+</script>
+</body>
+</html>
