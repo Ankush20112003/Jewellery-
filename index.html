@@ -2745,6 +2745,9 @@ addItem();
 </body>
 </html> -->
 
+
+
+
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -4760,13 +4763,87 @@ ${b.status === "Cancelled" ? `
   `).join("") || "No bills found";
 }
 function editBill(id){
-  const b = db.bills.find(x => x.id === id);
+  const b=db.bills.find(x=>x.id===id);
+  if(!b) return alert("Bill not found");
 
-  if (!b) return alert("Bill not found");
+  editingBillId=id;
+  $("billSaveButton").textContent="Update Bill";
+  $("customer").value=b.customer;
+  $("mobile").value=b.mobile||"";
+  $("billDate").value=b.date;
+  $("billNo").value=b.id;
+
+  $("discount").value=b.discount||0;
+  $("gst").value=b.gst ? (b.gst/(Math.max(0,b.subtotal-b.discount)||1))*100 : 0;
+  // Is bill ke original rates restore karo
+const oldItems = b.items || [];
+const oldExchange = b.exchangeDetails || {};
+
+const oldGoldRate =
+  b.rates?.goldRate ||
+  oldItems.find(x => x.metalType === "Gold")?.rate ||
+  (oldExchange.metal === "Gold" ? oldExchange.rate : 0) ||
+  0;
+
+const oldSilverRate =
+  b.rates?.silverRate ||
+  oldItems.find(x => x.metalType === "Silver")?.rate ||
+  (oldExchange.metal === "Silver" ? oldExchange.rate : 0) ||
+  0;
+
+$("goldRate").value = oldGoldRate || "";
+$("silverRate").value = oldSilverRate || "";
+  // Restore old jewellery exchange details
+const e = b.exchangeDetails || {};
+
+$("exchangeMetal").value = e.metal || "Gold";
+$("exchangeItem").value = e.item || "";
+$("exchangePurity").value = e.purity || "22K";
+
+$("exchangeGross").value = e.gross || 0;
+$("exchangeStone").value = e.stone || 0;
+$("exchangeTunch").value = e.tunch || 91.6;
+$("exchangeRate").value = e.rate || 0;
+$("exchangeDeduction").value = e.deduction || 0;
+  $("paid").value=b.paid||0;
+
+  $("items").innerHTML="";
+  itemCount=0;
+
+  (b.items||[]).forEach(x=>{
+    addItem();
+    const el=$("items").lastElementChild;
+
+    const set=(cls,value)=>{
+      const field=el.querySelector("."+cls);
+      if(field && value!==undefined) field.value=value;
+    };
+
+    set("metal",x.metalType);
+    set("name",x.name);
+    set("purity",x.purity);
+    set("gross",x.gross);
+    set("stone",x.stone);
+    set("rate",x.rate);
+    set("tunch",x.tunch);
+
+    // New bills retain original labour settings.
+    // Older bills may only have calculated labour.
+    set("labour",x.labourInput!==undefined ? x.labourInput : x.labour);
+    set("labourType",x.labourType||"fixed");
+    set("wastage",x.wastage!==undefined ? x.wastage : 0);
+    set("other",x.other);
+  });
+
+  calculate();
+  show("billing");
+  alert("Bill edit mode mein khul gaya hai. Changes ke baad Update Bill button dabayein.");
+}
 
   if (b.status === "Cancelled") {
     return alert("Cancelled bill edit nahi ho sakta");
   }
+
 
 function cancelBill(id) {
   const b = db.bills.find(x => String(x.id) === String(id));
