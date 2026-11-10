@@ -2746,8 +2746,6 @@ addItem();
 </html> -->
 
 
-
-
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -4726,20 +4724,7 @@ function renderHistory() {
     <div class="item">
       <b>${safe(b.id)}</b>
 
-      <p>
-  ${safe(b.date)} · ${safe(b.customer)}
-  ${b.status === "Cancelled"
-    ? '<b style="color:#b42318"> · CANCELLED</b>'
-    : '<b style="color:#18723c"> · ACTIVE</b>'}
-</p>
-
-${b.status === "Cancelled" ? `
-  <p style="color:#b42318">
-    Refund: ${money(b.cancellation?.refundAmount || 0)}
-    · Date: ${safe(b.cancellation?.date || "")}
-    · Reason: ${safe(b.cancellation?.reason || "")}
-  </p>
-` : ""}
+      <p>${safe(b.date)} · ${safe(b.customer)}</p>
 
       <p>
         Total: ${money(b.total)}
@@ -4747,18 +4732,15 @@ ${b.status === "Cancelled" ? `
         | Due: ${money(getBillDue(b))}
       </p>
 
-      ${b.status === "Cancelled" ? "" : `
-  <button onclick="editBill('${safe(b.id)}')">Edit</button>
-`}
+      <button onclick="editBill('${safe(b.id)}')">Edit</button>
 
       <button onclick="reprintBill('${safe(b.id)}')">Reprint</button>
 
       <button
-  onclick="cancelBill('${safe(b.id)}')"
-  style="background:#a83232"
-  ${b.status === "Cancelled" ? "disabled" : ""}>
-  ${b.status === "Cancelled" ? "Cancelled" : "Cancel / Refund"}
-</button>
+        onclick="deleteBill('${safe(b.id)}')"
+        style="background:#a83232">
+        Delete
+      </button>
     </div>
   `).join("") || "No bills found";
 }
@@ -4840,115 +4822,27 @@ $("exchangeDeduction").value = e.deduction || 0;
   alert("Bill edit mode mein khul gaya hai. Changes ke baad Update Bill button dabayein.");
 }
 
-  if (b.status === "Cancelled") {
-    return alert("Cancelled bill edit nahi ho sakta");
-  }
+function deleteBill(id){
+  const b=db.bills.find(x=>x.id===id);
+  if(!b) return alert("Bill not found");
 
+  if(!confirm("Kya aap bill "+id+" delete karna chahte hain?"))
+    return;
 
-function cancelBill(id) {
-  const b = db.bills.find(x => String(x.id) === String(id));
+  db.bills=db.bills.filter(x=>x.id!==id);
 
-  if (!b) return alert("Bill not found");
-
-  if (b.status === "Cancelled") {
-    return alert("Ye bill pehle hi cancel ho chuka hai");
-  }
-
-  const paid = Number(b.paid || 0);
-
-  const refundInput = prompt(
-    "Customer ko kitna refund karna hai? Maximum: " + paid,
-    String(paid)
+  // Remove only the automatic bill debit entry and initial payment
+  db.payments=db.payments.filter(p=>
+    !(p.note==="Bill "+id && p.type==="debit")
   );
 
-  if (refundInput === null) return;
-
-  const refundAmount = Number(refundInput);
-
-  if (
-    !Number.isFinite(refundAmount) ||
-    refundAmount < 0 ||
-    refundAmount > paid
-  ) {
-    return alert("Refund amount 0 se " + paid + " ke beech hona chahiye");
-  }
-
-  const reason = prompt("Bill cancel karne ka reason enter karein:");
-
-  if (reason === null) return;
-
-  if (!confirm(
-    "Bill " + id + " cancel karna hai?\n" +
-    "Refund: " + money(refundAmount) +
-    "\nReason: " + reason
-  )) return;
-
-  // Original bill ki debit entries reverse karo
-  const debitEntries = db.payments.filter(p =>
-    p.customerId === b.customerId &&
-    p.type === "debit" &&
-    p.note === "Bill " + b.id
+  db.cash=db.cash.filter(x=>
+    !(x.category==="Bill payment" && x.description===id)
   );
-
-  const debitTotal = debitEntries.reduce(
-    (sum, p) => sum + Number(p.amount || 0), 0
-  );
-
-  if (debitTotal > 0) {
-    db.payments.push({
-      id: "CANCEL-D-" + Date.now(),
-      customerId: b.customerId,
-      date: today(),
-      type: "credit",
-      amount: debitTotal,
-      note: "Bill cancellation reversal " + b.id,
-      paymentMode: "Adjustment"
-    });
-  }
-
-  // Jo initial payment refund nahi hui, use customer advance banao
-  const retainedAmount = Math.max(0, paid - refundAmount);
-
-  if (retainedAmount > 0) {
-    db.payments.push({
-      id: "CANCEL-A-" + Date.now(),
-      customerId: b.customerId,
-      date: today(),
-      type: "credit",
-      amount: retainedAmount,
-      note: "Cancelled bill retained advance " + b.id,
-      paymentMode: "Adjustment"
-    });
-  }
-
-  // Actual refund Cash Book mein Cash Out hoga
-  if (refundAmount > 0) {
-    db.cash.push({
-      id: "REFUND-" + Date.now(),
-      date: today(),
-      type: "out",
-      amount: refundAmount,
-      category: "Bill Refund",
-      description: "Bill " + b.id + " - " + b.customer,
-      paymentMode: "Cash"
-    });
-  }
-
-  // Bill delete nahi hoga; sirf status aur cancellation details update hongi
-  b.status = "Cancelled";
-  b.cancellation = {
-    date: today(),
-    refundAmount: refundAmount,
-    reason: reason.trim(),
-    retainedAdvance: retainedAmount,
-    reversedDue: debitTotal
-  };
 
   persist();
-
-  alert("Bill successfully cancelled. Record محفوظ hai.");
+  alert("Bill deleted");
 }
-
 
 function reprintBill(id){
   const b=db.bills.find(x=>x.id===id);
